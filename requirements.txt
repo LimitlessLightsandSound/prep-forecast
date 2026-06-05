@@ -1,0 +1,2 @@
+# Only needed when FORECAST_PASSPHRASE is set (encrypts the published forecast).
+cryptography>=42

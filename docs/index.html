@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Limitless — Prep Workload Forecast</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0c0e13; --panel:#14171f; --panel-2:#1b1f29; --line:#272c38;
+    --ink:#e8ebf2; --muted:#8a93a6; --faint:#5b6577;
+    --amber:#e8a838; --cyan:#3fc7d4; --violet:#9b8cff; --green:#4bbf87;
+    --amber-dim:rgba(232,168,56,.13); --cyan-dim:rgba(63,199,212,.12); --violet-dim:rgba(155,140,255,.12);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);
+    -webkit-font-smoothing:antialiased;line-height:1.45;min-height:100vh;
+    background-image:radial-gradient(circle at 12% -5%,rgba(155,140,255,.06),transparent 38%),
+                     radial-gradient(circle at 92% 0%,rgba(63,199,212,.05),transparent 40%);
+    background-attachment:fixed}
+  header{padding:30px 36px 24px;border-bottom:1px solid var(--line)}
+  .head-row{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;max-width:1240px;margin:0 auto}
+  .eyebrow{font-size:11.5px;text-transform:uppercase;letter-spacing:2.5px;color:var(--amber);font-weight:700;margin-bottom:7px}
+  header h1{font-family:'Playfair Display',serif;font-weight:800;font-size:32px;letter-spacing:.3px;color:#fff}
+  header h1 em{font-style:normal;color:var(--cyan)}
+  .sub{font-size:13px;color:var(--muted);margin-top:5px}
+  .updated{font-size:12px;color:var(--faint);text-align:right}
+  .updated b{color:var(--cyan);font-weight:600;display:block;margin-top:2px;font-size:13px}
+  main{max-width:1240px;margin:0 auto;padding:30px 36px 70px}
+  .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:34px}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;position:relative;overflow:hidden}
+  .tile::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--accent,var(--cyan))}
+  .tile.a{--accent:var(--amber)} .tile.c{--accent:var(--cyan)} .tile.v{--accent:var(--violet)} .tile.g{--accent:var(--green)}
+  .tile .label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600}
+  .tile .val{font-family:'Playfair Display',serif;font-weight:700;font-size:34px;color:#fff;margin-top:6px;line-height:1}
+  .tile .val .unit{font-size:14px;color:var(--muted);font-weight:500;margin-left:4px;font-family:'Inter'}
+  .tile .meta{font-size:12px;color:var(--faint);margin-top:5px}
+  .sec{font-family:'Playfair Display',serif;font-weight:700;font-size:19px;color:#fff;margin:4px 0 16px;display:flex;align-items:center;gap:12px}
+  .sec .tick{width:9px;height:9px;border-radius:50%;background:var(--amber);box-shadow:0 0 12px var(--amber)}
+  .sec::after{content:"";flex:1;height:1px;background:var(--line)}
+  .days{display:flex;flex-direction:column;gap:12px}
+  .day{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;
+    display:grid;grid-template-columns:118px 1fr 96px;transition:border-color .15s ease,transform .15s ease}
+  .day:hover{border-color:#39414f;transform:translateY(-1px)}
+  .d-date{background:linear-gradient(160deg,var(--panel-2),#10131a);padding:18px 20px;
+    display:flex;flex-direction:column;justify-content:center;border-right:1px solid var(--line)}
+  .d-date .dow{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--cyan);font-weight:700}
+  .d-date .dnum{font-family:'Playfair Display',serif;font-weight:700;font-size:23px;color:#fff;margin-top:3px}
+  .d-body{padding:15px 22px;display:flex;flex-direction:column;justify-content:center;gap:12px}
+  .bars{display:flex;flex-wrap:wrap;gap:8px}
+  .bar{display:flex;align-items:baseline;gap:7px;padding:6px 12px;border-radius:9px;background:var(--panel-2);border:1px solid var(--line)}
+  .bar .bl{font-size:10.5px;text-transform:uppercase;letter-spacing:.7px;font-weight:700}
+  .bar .bv{font-size:16px;font-weight:700;color:#fff}
+  .bar .bv small{font-size:11px;color:var(--muted);font-weight:500}
+  .bar.prep .bl{color:var(--cyan)} .bar.prep{border-color:rgba(63,199,212,.3);background:var(--cyan-dim)}
+  .bar.deprep .bl{color:var(--violet)} .bar.deprep{border-color:rgba(155,140,255,.3);background:var(--violet-dim)}
+  .bar.total .bl{color:var(--amber)} .bar.total{border-color:rgba(232,168,56,.3);background:var(--amber-dim)}
+  .jobs{display:flex;flex-direction:column;gap:5px}
+  .jh{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--faint);font-weight:700}
+  .job{display:flex;align-items:center;gap:9px;font-size:13px}
+  .tag{font-size:9.5px;font-weight:800;letter-spacing:.6px;padding:2px 7px;border-radius:5px;text-transform:uppercase;flex-shrink:0;min-width:58px;text-align:center}
+  .tag.prep{background:var(--cyan-dim);color:var(--cyan);border:1px solid rgba(63,199,212,.4)}
+  .tag.deprep{background:var(--violet-dim);color:var(--violet);border:1px solid rgba(155,140,255,.4)}
+  .job .jn{color:var(--ink);font-weight:500}
+  .job .jhrs{color:var(--faint);font-size:12px}
+  .d-staff{display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:linear-gradient(160deg,#10131a,var(--panel-2));border-left:1px solid var(--line);padding:14px 8px}
+  .d-staff .sn{font-family:'Playfair Display',serif;font-weight:800;font-size:38px;color:var(--amber);line-height:1;text-shadow:0 0 22px rgba(232,168,56,.35)}
+  .d-staff .snl{font-size:9px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;margin-top:4px;text-align:center;line-height:1.3}
+  .note{font-size:12px;color:var(--muted);margin-top:30px;padding-top:18px;border-top:1px solid var(--line);line-height:1.65}
+  .note b{color:var(--ink)}
+  .status{padding:13px 18px;border-radius:11px;font-size:13px;margin-bottom:22px;border:1px solid}
+  .status.err{background:rgba(214,90,90,.12);border-color:rgba(214,90,90,.4);color:#e88b8b}
+  .status.empty{background:var(--cyan-dim);border-color:rgba(63,199,212,.3);color:var(--cyan)}
+  .gate{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
+    background:rgba(8,10,14,.93);backdrop-filter:blur(5px)}
+  .gate.hidden{display:none}
+  .gate-card{background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:30px 32px;width:min(380px,90vw);text-align:center}
+  .gate-card h2{font-family:'Playfair Display',serif;color:#fff;font-size:22px;margin:8px 0 6px}
+  .gate-card p{font-size:13px;color:var(--muted);margin-bottom:18px}
+  .gate-card input{width:100%;padding:11px 14px;border-radius:10px;border:1px solid var(--line);
+    background:var(--panel-2);color:var(--ink);font-size:15px;font-family:'Inter';margin-bottom:12px}
+  .gate-card input:focus{outline:none;border-color:var(--cyan)}
+  .gate-card button{width:100%;padding:11px;border-radius:10px;border:none;background:var(--cyan);
+    color:#06222a;font-weight:700;font-size:14px;cursor:pointer;font-family:'Inter'}
+  .gate-card button:hover{filter:brightness(1.08)}
+  .gate-err{color:#e88b8b;font-size:12.5px;margin-top:12px;min-height:16px}
+  @media(max-width:720px){
+    .summary{grid-template-columns:repeat(2,1fr)}
+    .day{grid-template-columns:90px 1fr}
+    .d-staff{grid-column:1/-1;flex-direction:row;gap:12px;border-left:none;border-top:1px solid var(--line)}
+    main,header{padding-left:18px;padding-right:18px}
+    .tag{min-width:52px}
+  }
+</style>
+</head>
+<body>
+<div class="gate hidden" id="gate">
+  <form class="gate-card" id="gateForm">
+    <div class="eyebrow">Limitless Lights &amp; Sound</div>
+    <h2>Prep Forecast</h2>
+    <p>Enter the shared passphrase to view the forecast.</p>
+    <input type="password" id="gatePass" placeholder="Passphrase" autocomplete="current-password">
+    <button type="submit">Unlock</button>
+    <div class="gate-err" id="gateErr"></div>
+  </form>
+</div>
+<header>
+  <div class="head-row">
+    <div>
+      <div class="eyebrow">Limitless Lights &amp; Sound</div>
+      <h1>Prep Workload <em>Forecast</em></h1>
+      <div class="sub">Shop labor by day — prep &amp; de-prep, spread across scheduled days</div>
+    </div>
+    <div class="updated">Data updated<b id="updated">loading…</b></div>
+  </div>
+</header>
+<main>
+  <div id="status"></div>
+  <div class="summary" id="summary"></div>
+  <div class="sec"><span class="tick"></span>Daily Breakdown</div>
+  <div class="days" id="days"></div>
+  <div class="note">
+    <b>Reading it:</b> each job is tagged <span class="tag prep" style="display:inline-block;min-width:0;padding:1px 6px">Prep</span> (building) or
+    <span class="tag deprep" style="display:inline-block;min-width:0;padding:1px 6px">De-prep</span> (tearing down / checking in). Hours are spread across each job's scheduled days.
+    <b>Shop Hands</b> is the raw figure — total hours &divide; <span id="shiftnote">8</span>-hour shift, rounded up. A workload number, not a roster.
+  </div>
+</main>
+<script>
+  // Dashboard reads forecast.json sitting next to it in the same GitHub Pages repo.
+  // The Claude Code routine rebuilds that file from Current RMS every 3 hours.
+  const DATA_URL = "forecast.json";
+
+  const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  function fd(s){const d=new Date(s+"T00:00:00");return{dow:DOW[d.getDay()],dnum:d.getDate(),mon:MON[d.getMonth()]};}
+  const h=v=>Number.isInteger(+v)? +v : (+v).toFixed(1);
+  // Escape untrusted strings (job names come from RMS free-text) before they go
+  // into innerHTML — prevents stored XSS on the public dashboard.
+  const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>(
+    {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+
+  function render(payload){
+    const data = payload.days || [];
+    document.getElementById("shiftnote").textContent = payload.shift_hours || 8;
+    if(payload.generated_at){
+      document.getElementById("updated").textContent =
+        new Date(payload.generated_at).toLocaleString('en-US',
+          {weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+    }
+    if(!data.length){
+      document.getElementById("status").innerHTML=
+        '<div class="status empty">No prep or de-prep scheduled in the forecast window.</div>';
+      return;
+    }
+    const totalHrs=data.reduce((a,d)=>a+(+d.total_hrs||0),0);
+    const peak=data.reduce((a,d)=>(+d.total_hrs)>(+a.total_hrs)?d:a,data[0]);
+    const maxHands=data.reduce((a,d)=>Math.max(a,+d.shop_hands||0),0);
+    const pk=fd(peak.date);
+    document.getElementById("summary").innerHTML=
+      '<div class="tile c"><div class="label">Days Shown</div><div class="val">'+data.length+'</div></div>'+
+      '<div class="tile g"><div class="label">Total Workload</div><div class="val">'+h(totalHrs)+'<span class="unit">hrs</span></div></div>'+
+      '<div class="tile a"><div class="label">Peak Day</div><div class="val">'+h(peak.total_hrs)+'<span class="unit">hrs</span></div><div class="meta">'+pk.dow+' '+pk.mon+' '+pk.dnum+'</div></div>'+
+      '<div class="tile v"><div class="label">Max Shop Hands / Day</div><div class="val">'+maxHands+'</div></div>';
+
+    document.getElementById("days").innerHTML=data.map(function(d){
+      const dt=fd(d.date);
+      const jobs=(d.jobs||[]).map(function(j){
+        const cls=j.phase==="DEPREP"?"deprep":"prep";
+        const label=j.phase==="DEPREP"?"De-prep":"Prep";
+        return '<div class="job"><span class="tag '+cls+'">'+label+'</span>'+
+               '<span class="jn">'+esc(j.name)+'</span>'+
+               '<span class="jhrs">'+h(j.hours)+'h</span></div>';
+      }).join("") || '<div class="job"><span class="jn" style="color:var(--faint)">—</span></div>';
+      return '<div class="day">'+
+        '<div class="d-date"><span class="dow">'+dt.dow+'</span><span class="dnum">'+dt.mon+' '+dt.dnum+'</span></div>'+
+        '<div class="d-body"><div class="bars">'+
+          '<div class="bar prep"><span class="bl">Prep</span><span class="bv">'+h(d.prep_hrs)+'<small> h</small></span></div>'+
+          '<div class="bar deprep"><span class="bl">De-prep</span><span class="bv">'+h(d.deprep_hrs)+'<small> h</small></span></div>'+
+          '<div class="bar total"><span class="bl">Total</span><span class="bv">'+h(d.total_hrs)+'<small> h</small></span></div>'+
+        '</div><div class="jobs"><span class="jh">Jobs this day</span>'+jobs+'</div></div>'+
+        '<div class="d-staff"><span class="sn">'+(+d.shop_hands||0)+'</span><span class="snl">Shop<br>Hands</span></div>'+
+      '</div>';
+    }).join("");
+  }
+
+  // --- Shared-passphrase decryption (AES-256-GCM, PBKDF2), runs in-browser ---
+  // The published forecast.json is ciphertext; nothing renders without the
+  // passphrase, and fetching the file directly yields only an opaque envelope.
+  const dec64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  async function decryptEnvelope(env, passphrase){
+    const baseKey = await crypto.subtle.importKey(
+      "raw", new TextEncoder().encode(passphrase), "PBKDF2", false, ["deriveKey"]);
+    const key = await crypto.subtle.deriveKey(
+      {name:"PBKDF2", salt:dec64(env.salt), iterations:env.iter, hash:env.hash||"SHA-256"},
+      baseKey, {name:"AES-GCM", length:256}, false, ["decrypt"]);
+    const buf = await crypto.subtle.decrypt({name:"AES-GCM", iv:dec64(env.iv)}, key, dec64(env.ct));
+    return JSON.parse(new TextDecoder().decode(buf));
+  }
+
+  const gate = document.getElementById("gate");
+  let ENVELOPE = null;
+  async function tryUnlock(passphrase, fromStored){
+    try{
+      const payload = await decryptEnvelope(ENVELOPE, passphrase);
+      sessionStorage.setItem("ppf_pass", passphrase);  // remember for this tab session
+      gate.classList.add("hidden");
+      render(payload);
+    }catch(e){
+      sessionStorage.removeItem("ppf_pass");
+      gate.classList.remove("hidden");
+      if(!fromStored) document.getElementById("gateErr").textContent = "Wrong passphrase — try again.";
+      document.getElementById("gatePass").focus();
+    }
+  }
+  document.getElementById("gateForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    tryUnlock(document.getElementById("gatePass").value, false);
+  });
+
+  fetch(DATA_URL + "?t=" + Date.now())   // cache-bust so the 3-hour refresh shows
+    .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+    .then(function(data){
+      if(data && data.ct && data.kdf){            // encrypted envelope -> gate
+        ENVELOPE = data;
+        const stored = sessionStorage.getItem("ppf_pass");
+        if(stored){ tryUnlock(stored, true); }    // silent re-unlock within the session
+        else { gate.classList.remove("hidden"); document.getElementById("gatePass").focus(); }
+      } else {
+        render(data);                             // plaintext (local/dev only)
+      }
+    })
+    .catch(function(e){
+      document.getElementById("updated").textContent="—";
+      document.getElementById("status").innerHTML=
+        '<div class="status err">Couldn\'t load forecast.json ('+e.message+'). The pipeline may not have run yet, or Pages hasn\'t published it.</div>';
+    });
+</script>
+</body>
+</html>
