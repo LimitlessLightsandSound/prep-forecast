@@ -188,12 +188,17 @@ def main():
     # Labor minutes live on products; build the lookup once and join by item_id.
     labor = build_product_labor()
 
-    # day -> {"prep": mins, "deprep": mins, "jobs": {(oid,name,phase): mins}}
-    buckets = defaultdict(lambda: {"prep": 0.0, "deprep": 0.0, "jobs": defaultdict(float)})
+    # Per day we split minutes into confirmed (Order) vs at-risk (unconfirmed),
+    # so the dashboard can show a committed floor plus an "if quotes confirm" delta.
+    # day -> {prep_c, prep_r, deprep_c, deprep_r, jobs:{(oid,name,phase,confirmed):mins}}
+    buckets = defaultdict(lambda: {"prep_c": 0.0, "prep_r": 0.0,
+                                   "deprep_c": 0.0, "deprep_r": 0.0,
+                                   "jobs": defaultdict(float)})
 
     for opp in opps:
         oid  = opp.get("id")
         name = opp.get("subject") or opp.get("number") or f"Opp {oid}"
+        confirmed = (opp.get("state_name") == "Order")  # else quoted/unconfirmed
         items = opp.get("opportunity_items", [])
         if not items:
             # items not embedded for this config — fetch explicitly
@@ -226,31 +231,40 @@ def main():
             per = prep_total / len(prep_days)
             for d in prep_days:
                 if today <= d <= horizon:
-                    buckets[d]["prep"] += per
-                    buckets[d]["jobs"][(oid, name, "PREP")] += per
+                    buckets[d]["prep_c" if confirmed else "prep_r"] += per
+                    buckets[d]["jobs"][(oid, name, "PREP", confirmed)] += per
         if deprep_days:
             per = deprep_total / len(deprep_days)
             for d in deprep_days:
                 if today <= d <= horizon:
-                    buckets[d]["deprep"] += per
-                    buckets[d]["jobs"][(oid, name, "DEPREP")] += per
+                    buckets[d]["deprep_c" if confirmed else "deprep_r"] += per
+                    buckets[d]["jobs"][(oid, name, "DEPREP", confirmed)] += per
 
     rows = []
     for d in sorted(buckets):
         b = buckets[d]
-        prep_h = round(b["prep"] / 60, 1)
-        deprep_h = round(b["deprep"] / 60, 1)
-        total_h = round(prep_h + deprep_h, 1)
-        hands = max(MIN_HANDS, int(-(-(b["prep"] + b["deprep"]) // (SHIFT * 60))))  # ceil, floored
+        prep_mins   = b["prep_c"] + b["prep_r"]
+        deprep_mins = b["deprep_c"] + b["deprep_r"]
+        confirmed_mins = b["prep_c"] + b["deprep_c"]
+        atrisk_mins    = b["prep_r"] + b["deprep_r"]
+        prep_h   = round(prep_mins / 60, 1)
+        deprep_h = round(deprep_mins / 60, 1)
+        total_h  = round(prep_h + deprep_h, 1)
+        hands = max(MIN_HANDS, int(-(-(prep_mins + deprep_mins) // (SHIFT * 60))))  # ceil, floored
+        # committed headcount floor uses confirmed-only minutes (no MIN floor — 0 means 0 firm)
+        hands_confirmed = int(-(-confirmed_mins // (SHIFT * 60)))
         top = sorted(b["jobs"].items(), key=lambda kv: kv[1], reverse=True)[:4]
-        jobs = [{"id": oid, "name": n, "phase": ph, "hours": round(m / 60, 1)}
-                for (oid, n, ph), m in top]
+        jobs = [{"id": oid, "name": n, "phase": ph, "confirmed": conf, "hours": round(m / 60, 1)}
+                for (oid, n, ph, conf), m in top]
         rows.append({
             "date": d.isoformat(),
             "prep_hrs": prep_h,
             "deprep_hrs": deprep_h,
             "total_hrs": total_h,
+            "confirmed_hrs": round(confirmed_mins / 60, 1),
+            "atrisk_hrs": round(atrisk_mins / 60, 1),
             "shop_hands": hands,
+            "shop_hands_confirmed": hands_confirmed,
             "jobs": jobs,
         })
 
