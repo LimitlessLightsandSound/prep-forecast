@@ -30,6 +30,7 @@ TOKEN     = os.environ.get("CURRENT_RMS_TOKEN", "")
 SUBDOMAIN = os.environ.get("CURRENT_RMS_SUBDOMAIN", "")
 DAYS      = int(os.environ.get("FORECAST_DAYS", "14"))
 SHIFT     = float(os.environ.get("SHIFT_HOURS", "8"))
+MIN_HANDS = int(os.environ.get("MIN_SHOP_HANDS", "2"))  # floor on any working day
 DEBUG     = os.environ.get("DEBUG_FIELDS") == "1"
 # Shared-passphrase encryption: when set, the output is encrypted (AES-256-GCM,
 # PBKDF2 key) so it can sit on a PUBLIC host and only decrypt in-browser with the
@@ -187,11 +188,12 @@ def main():
     # Labor minutes live on products; build the lookup once and join by item_id.
     labor = build_product_labor()
 
-    # day -> {"prep": mins, "deprep": mins, "jobs": {(name,phase): mins}}
+    # day -> {"prep": mins, "deprep": mins, "jobs": {(oid,name,phase): mins}}
     buckets = defaultdict(lambda: {"prep": 0.0, "deprep": 0.0, "jobs": defaultdict(float)})
 
     for opp in opps:
-        name = opp.get("subject") or opp.get("number") or f"Opp {opp.get('id')}"
+        oid  = opp.get("id")
+        name = opp.get("subject") or opp.get("number") or f"Opp {oid}"
         items = opp.get("opportunity_items", [])
         if not items:
             # items not embedded for this config — fetch explicitly
@@ -217,13 +219,13 @@ def main():
             for d in prep_days:
                 if today <= d <= horizon:
                     buckets[d]["prep"] += per
-                    buckets[d]["jobs"][(name, "PREP")] += per
+                    buckets[d]["jobs"][(oid, name, "PREP")] += per
         if deprep_days:
             per = deprep_total / len(deprep_days)
             for d in deprep_days:
                 if today <= d <= horizon:
                     buckets[d]["deprep"] += per
-                    buckets[d]["jobs"][(name, "DEPREP")] += per
+                    buckets[d]["jobs"][(oid, name, "DEPREP")] += per
 
     rows = []
     for d in sorted(buckets):
@@ -231,9 +233,10 @@ def main():
         prep_h = round(b["prep"] / 60, 1)
         deprep_h = round(b["deprep"] / 60, 1)
         total_h = round(prep_h + deprep_h, 1)
-        hands = int(-(-(b["prep"] + b["deprep"]) // (SHIFT * 60)))  # ceil
+        hands = max(MIN_HANDS, int(-(-(b["prep"] + b["deprep"]) // (SHIFT * 60))))  # ceil, floored
         top = sorted(b["jobs"].items(), key=lambda kv: kv[1], reverse=True)[:4]
-        jobs = [{"name": n, "phase": ph, "hours": round(m / 60, 1)} for (n, ph), m in top]
+        jobs = [{"id": oid, "name": n, "phase": ph, "hours": round(m / 60, 1)}
+                for (oid, n, ph), m in top]
         rows.append({
             "date": d.isoformat(),
             "prep_hrs": prep_h,
@@ -247,6 +250,8 @@ def main():
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "horizon_days": DAYS,
         "shift_hours": SHIFT,
+        "min_hands": MIN_HANDS,
+        "rms_base": f"https://{SUBDOMAIN}.current-rms.com",  # opp link = rms_base/opportunities/<id>
         "days": rows,
     }
     os.makedirs(os.path.dirname(OUT), exist_ok=True)

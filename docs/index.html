@@ -64,6 +64,8 @@
   .tag.prep{background:var(--cyan-dim);color:var(--cyan);border:1px solid rgba(63,199,212,.4)}
   .tag.deprep{background:var(--violet-dim);color:var(--violet);border:1px solid rgba(155,140,255,.4)}
   .job .jn{color:var(--ink);font-weight:500}
+  .job a.jn{text-decoration:none;border-bottom:1px dotted var(--faint);transition:color .12s,border-color .12s}
+  .job a.jn:hover{color:var(--cyan);border-bottom-color:var(--cyan)}
   .job .jhrs{color:var(--faint);font-size:12px}
   .d-staff{display:flex;flex-direction:column;align-items:center;justify-content:center;
     background:linear-gradient(160deg,#10131a,var(--panel-2));border-left:1px solid var(--line);padding:14px 8px}
@@ -145,6 +147,7 @@
 
   function render(payload){
     const data = payload.days || [];
+    const rmsBase = payload.rms_base || "";   // opp link base: rmsBase + /opportunities/<id>
     document.getElementById("shiftnote").textContent = payload.shift_hours || 8;
     if(payload.generated_at){
       document.getElementById("updated").textContent =
@@ -171,9 +174,11 @@
       const jobs=(d.jobs||[]).map(function(j){
         const cls=j.phase==="DEPREP"?"deprep":"prep";
         const label=j.phase==="DEPREP"?"De-prep":"Prep";
+        const nm = (j.id && rmsBase)
+          ? '<a class="jn" href="'+rmsBase+'/opportunities/'+encodeURIComponent(j.id)+'" target="_blank" rel="noopener">'+esc(j.name)+'</a>'
+          : '<span class="jn">'+esc(j.name)+'</span>';
         return '<div class="job"><span class="tag '+cls+'">'+label+'</span>'+
-               '<span class="jn">'+esc(j.name)+'</span>'+
-               '<span class="jhrs">'+h(j.hours)+'h</span></div>';
+               nm+'<span class="jhrs">'+h(j.hours)+'h</span></div>';
       }).join("") || '<div class="job"><span class="jn" style="color:var(--faint)">—</span></div>';
       return '<div class="day">'+
         '<div class="d-date"><span class="dow">'+dt.dow+'</span><span class="dnum">'+dt.mon+' '+dt.dnum+'</span></div>'+
