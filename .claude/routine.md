@@ -20,6 +20,18 @@ FORECAST_PASSPHRASE=<the shared passphrase that unlocks the dashboard>
 Repo access: grant the routine `LimitlessLightsandSound/prep-forecast` and enable
 **"Allow unrestricted branch pushes"** so it can push to `master`.
 
+### Cloud-environment settings that are easy to get wrong (verified working)
+- **Network access = Custom**, with `api.current-rms.com` in the allowlist, AND
+  keep "include default package managers" checked. Trusted/None blocks the RMS
+  call with `403 Host not in allowlist`; Custom+RMS is the least-privilege fit.
+- **Setup script = `pip install cryptography`** — NOT `pip install -r
+  requirements.txt`. The setup script runs before the repo is checked out, so the
+  requirements file isn't present yet; installing the package by name avoids the
+  `No such file or directory: 'requirements.txt'` failure.
+- GitHub connection is separate from the App install: the claude.ai account must
+  be linked to the GitHub identity (claude.ai/settings/connected-accounts) before
+  the repo appears in the routine's repository picker.
+
 ### Routine prompt
 1. In the `prep-forecast` repo on branch `master`, install deps and run the build:
    `pip install -r requirements.txt && python3 build_forecast.py`
