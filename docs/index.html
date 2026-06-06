@@ -175,7 +175,7 @@
         const cls=j.phase==="DEPREP"?"deprep":"prep";
         const label=j.phase==="DEPREP"?"De-prep":"Prep";
         const nm = (j.id && rmsBase)
-          ? '<a class="jn" href="'+rmsBase+'/opportunities/'+encodeURIComponent(j.id)+'" target="_blank" rel="noopener">'+esc(j.name)+'</a>'
+          ? '<a class="jn" href="'+rmsBase+'/opportunities/'+encodeURIComponent(j.id)+'?view=d" target="_blank" rel="noopener">'+esc(j.name)+'</a>'
           : '<span class="jn">'+esc(j.name)+'</span>';
         return '<div class="job"><span class="tag '+cls+'">'+label+'</span>'+
                nm+'<span class="jhrs">'+h(j.hours)+'h</span></div>';
