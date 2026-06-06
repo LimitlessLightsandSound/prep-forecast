@@ -211,7 +211,15 @@ def main():
         if prep_total == 0 and deprep_total == 0:
             continue
 
-        prep_days = days_span(first_key(opp, PREP_START_KEYS), first_key(opp, OUT_KEYS))
+        # Prep happens BEFORE the gear goes out, so drop the out/delivery day itself
+        # — e.g. an 8am Monday delivery should NOT show prep on Monday. If prep and
+        # delivery land on the same day, fall back to the day before delivery so the
+        # work still appears somewhere sensible.
+        prep_span = days_span(first_key(opp, PREP_START_KEYS), first_key(opp, OUT_KEYS))
+        if prep_span:
+            prep_days = prep_span[:-1] or [prep_span[-1] - dt.timedelta(days=1)]
+        else:
+            prep_days = []
         deprep_days = days_span(first_key(opp, RETURN_START_KEYS), first_key(opp, RETURN_END_KEYS))
 
         if prep_days:
