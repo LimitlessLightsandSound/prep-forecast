@@ -71,8 +71,7 @@
   .splitline{display:flex;flex-wrap:wrap;gap:12px;font-size:11.5px;margin-top:2px}
   .splitline .firm{color:var(--green);font-weight:600}
   .splitline .prov{color:var(--amber);font-weight:600}
-  .d-staff .sn.hasrisk{color:var(--amber)}
-  .d-staff .firm-h{font-size:9px;color:var(--green);font-weight:700;margin-top:3px}
+  .d-staff .cont-note{font-size:8.5px;color:var(--amber);font-weight:700;margin-top:4px;text-align:center;line-height:1.25}
   .job .jhrs{color:var(--faint);font-size:12px}
   .d-staff{display:flex;flex-direction:column;align-items:center;justify-content:center;
     background:linear-gradient(160deg,#10131a,var(--panel-2));border-left:1px solid var(--line);padding:14px 8px}
@@ -210,8 +209,8 @@
         ? '<div class="splitline"><span class="firm">✓ '+h(firm)+'h confirmed</span>'+
           '<span class="prov">⚠ +'+h(atr)+'h if quotes confirm</span></div>'
         : '';
-      const snCls = atr>0 ? 'sn hasrisk' : 'sn';
-      const firmH = atr>0 ? '<span class="firm-h">'+(+d.shop_hands_confirmed||0)+' firm</span>' : '';
+      const cont = +d.contingency_hands||0;
+      const contNote = cont>0 ? '<span class="cont-note">+'+cont+' if quotes confirm</span>' : '';
       return '<div class="day">'+
         '<div class="d-date"><span class="dow">'+dt.dow+'</span><span class="dnum">'+dt.mon+' '+dt.dnum+'</span></div>'+
         '<div class="d-body"><div class="bars">'+
@@ -219,7 +218,7 @@
           '<div class="bar deprep"><span class="bl">De-prep</span><span class="bv">'+h(d.deprep_hrs)+'<small> h</small></span></div>'+
           '<div class="bar total"><span class="bl">Total</span><span class="bv">'+h(d.total_hrs)+'<small> h</small></span></div>'+
         '</div>'+cap+'<div class="jobs"><span class="jh">Jobs this day</span>'+jobs+'</div></div>'+
-        '<div class="d-staff"><span class="'+snCls+'">'+(+d.shop_hands||0)+'</span><span class="snl">Shop<br>Hands</span>'+firmH+'</div>'+
+        '<div class="d-staff"><span class="sn">'+(+d.shop_hands||0)+'</span><span class="snl">Shop<br>Hands</span>'+contNote+'</div>'+
       '</div>';
     }).join("");
 
@@ -231,11 +230,10 @@
         const link = (r.id && rmsBase) ? rmsBase+'/opportunities/'+encodeURIComponent(r.id)+'?view=d' : null;
         const nm = link ? '<a href="'+link+'" target="_blank" rel="noopener">'+esc(r.name)+'</a>' : esc(r.name);
         const o = fd(r.out_date);
-        const val = (+r.value) ? ' · $'+Number(r.value).toLocaleString() : '';
         return '<div class="risk-row">'+
           '<span class="risk-date">Out '+o.dow+' '+o.mon+' '+o.dnum+'</span>'+
           '<span class="risk-name">'+nm+'</span>'+
-          '<span class="risk-meta"><span class="pill">'+esc(r.state)+'</span>'+(r.status?' · '+esc(r.status):'')+val+'</span>'+
+          '<span class="risk-meta"><span class="pill">'+esc(r.state)+'</span>'+(r.status?' · '+esc(r.status):'')+'</span>'+
         '</div>';
       }).join("");
       rb.innerHTML =

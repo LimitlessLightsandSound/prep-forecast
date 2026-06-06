@@ -29,7 +29,7 @@ API = "https://api.current-rms.com/api/v1"
 TOKEN     = os.environ.get("CURRENT_RMS_TOKEN", "")
 SUBDOMAIN = os.environ.get("CURRENT_RMS_SUBDOMAIN", "")
 DAYS      = int(os.environ.get("FORECAST_DAYS", "14"))
-SHIFT     = float(os.environ.get("SHIFT_HOURS", "8"))
+SHIFT     = float(os.environ.get("SHIFT_HOURS", "6"))  # shop shift length (hours)
 MIN_HANDS = int(os.environ.get("MIN_SHOP_HANDS", "2"))  # floor on any working day
 DEBUG     = os.environ.get("DEBUG_FIELDS") == "1"
 # Shared-passphrase encryption: when set, the output is encrypted (AES-256-GCM,
@@ -250,9 +250,14 @@ def main():
         prep_h   = round(prep_mins / 60, 1)
         deprep_h = round(deprep_mins / 60, 1)
         total_h  = round(prep_h + deprep_h, 1)
-        hands = max(MIN_HANDS, int(-(-(prep_mins + deprep_mins) // (SHIFT * 60))))  # ceil, floored
-        # committed headcount floor uses confirmed-only minutes (no MIN floor — 0 means 0 firm)
-        hands_confirmed = int(-(-confirmed_mins // (SHIFT * 60)))
+        # Staffing shows FIRM hands (confirmed work only), floored at MIN_HANDS.
+        firm = max(MIN_HANDS, int(-(-confirmed_mins // (SHIFT * 60))))
+        # Contingency = extra hands if the day's quotes confirm; at least +1 when
+        # any unconfirmed work exists, so logistics sees the potential bump.
+        if_all = max(MIN_HANDS, int(-(-(confirmed_mins + atrisk_mins) // (SHIFT * 60))))
+        contingency = if_all - firm
+        if atrisk_mins > 0 and contingency < 1:
+            contingency = 1
         top = sorted(b["jobs"].items(), key=lambda kv: kv[1], reverse=True)[:4]
         jobs = [{"id": oid, "name": n, "phase": ph, "confirmed": conf, "hours": round(m / 60, 1)}
                 for (oid, n, ph, conf), m in top]
@@ -263,8 +268,8 @@ def main():
             "total_hrs": total_h,
             "confirmed_hrs": round(confirmed_mins / 60, 1),
             "atrisk_hrs": round(atrisk_mins / 60, 1),
-            "shop_hands": hands,
-            "shop_hands_confirmed": hands_confirmed,
+            "shop_hands": firm,
+            "contingency_hands": contingency,
             "jobs": jobs,
         })
 
