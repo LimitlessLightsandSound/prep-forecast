@@ -76,6 +76,21 @@
   .status{padding:13px 18px;border-radius:11px;font-size:13px;margin-bottom:22px;border:1px solid}
   .status.err{background:rgba(214,90,90,.12);border-color:rgba(214,90,90,.4);color:#e88b8b}
   .status.empty{background:var(--cyan-dim);border-color:rgba(63,199,212,.3);color:var(--cyan)}
+  .risk-panel{background:linear-gradient(180deg,rgba(232,168,56,.10),rgba(232,168,56,.03));
+    border:1px solid rgba(232,168,56,.42);border-radius:14px;padding:16px 20px;margin-bottom:30px}
+  .risk-head{font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:var(--amber);
+    display:flex;align-items:center;gap:10px}
+  .risk-count{background:var(--amber);color:#2a1d05;font-family:'Inter';font-size:12px;font-weight:800;
+    border-radius:999px;padding:1px 9px}
+  .risk-sub{font-size:12px;color:var(--muted);margin:3px 0 10px}
+  .risk-row{display:grid;grid-template-columns:118px 1fr auto;gap:12px;align-items:center;
+    padding:8px 0;border-top:1px solid rgba(232,168,56,.18);font-size:13px}
+  .risk-date{color:var(--amber);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+  .risk-name a{color:var(--ink);text-decoration:none;border-bottom:1px dotted var(--faint)}
+  .risk-name a:hover{color:var(--cyan);border-bottom-color:var(--cyan)}
+  .risk-meta{color:var(--faint);font-size:12px;text-align:right;white-space:nowrap}
+  .risk-meta .pill{color:var(--amber);font-weight:700}
+  @media(max-width:720px){.risk-row{grid-template-columns:1fr;gap:2px}.risk-meta{text-align:left}}
   .gate{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
     background:rgba(8,10,14,.93);backdrop-filter:blur(5px)}
   .gate.hidden{display:none}
@@ -123,6 +138,7 @@
 <main>
   <div id="status"></div>
   <div class="summary" id="summary"></div>
+  <div id="risk"></div>
   <div class="sec"><span class="tick"></span>Daily Breakdown</div>
   <div class="days" id="days"></div>
   <div class="note">
@@ -190,6 +206,31 @@
         '<div class="d-staff"><span class="sn">'+(+d.shop_hands||0)+'</span><span class="snl">Shop<br>Hands</span></div>'+
       '</div>';
     }).join("");
+
+    // Risk panel: quoted / unconfirmed jobs with gear due out in the window
+    const risk = payload.risk || [];
+    const rb = document.getElementById("risk");
+    if(risk.length){
+      const items = risk.map(function(r){
+        const link = (r.id && rmsBase) ? rmsBase+'/opportunities/'+encodeURIComponent(r.id)+'?view=d' : null;
+        const nm = link ? '<a href="'+link+'" target="_blank" rel="noopener">'+esc(r.name)+'</a>' : esc(r.name);
+        const o = fd(r.out_date);
+        const val = (+r.value) ? ' · $'+Number(r.value).toLocaleString() : '';
+        return '<div class="risk-row">'+
+          '<span class="risk-date">Out '+o.dow+' '+o.mon+' '+o.dnum+'</span>'+
+          '<span class="risk-name">'+nm+'</span>'+
+          '<span class="risk-meta"><span class="pill">'+esc(r.state)+'</span>'+(r.status?' · '+esc(r.status):'')+val+'</span>'+
+        '</div>';
+      }).join("");
+      rb.innerHTML =
+        '<div class="risk-panel">'+
+          '<div class="risk-head">⚠ Needs confirmation <span class="risk-count">'+risk.length+'</span></div>'+
+          '<div class="risk-sub">Quoted / unconfirmed jobs with gear due out in the next '+(payload.horizon_days||14)+' days — escalate to accounts.</div>'+
+          items+
+        '</div>';
+    } else {
+      rb.innerHTML = "";
+    }
   }
 
   // --- Shared-passphrase decryption (AES-256-GCM, PBKDF2), runs in-browser ---

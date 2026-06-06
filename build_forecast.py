@@ -254,6 +254,28 @@ def main():
             "jobs": jobs,
         })
 
+    # Risk scan: opportunities NOT yet confirmed (state_name != "Order") whose gear
+    # is due out within the window. Logistics should escalate these to accounts —
+    # the shop may already be planning prep for jobs that aren't locked in.
+    risk = []
+    for opp in opps:
+        state = opp.get("state_name")
+        if state == "Order":
+            continue  # confirmed — not a risk
+        out = first_key(opp, OUT_KEYS)
+        od = date_only(parse_dt(out)) if out else None
+        if not (od and today <= od <= horizon):
+            continue
+        risk.append({
+            "id": opp.get("id"),
+            "name": opp.get("subject") or opp.get("number") or f"Opp {opp.get('id')}",
+            "state": state,                       # e.g. "Quotation" / "Draft"
+            "status": opp.get("status_name"),     # e.g. "Provisional" / "Open"
+            "out_date": od.isoformat(),
+            "value": round(num(opp.get("charge_total")), 0),
+        })
+    risk.sort(key=lambda r: (r["out_date"], -r["value"]))
+
     payload = {
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "horizon_days": DAYS,
@@ -261,6 +283,7 @@ def main():
         "min_hands": MIN_HANDS,
         "rms_base": f"https://{SUBDOMAIN}.current-rms.com",  # opp link = rms_base/opportunities/<id>
         "days": rows,
+        "risk": risk,
     }
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     raw = json.dumps(payload, indent=2).encode("utf-8")
