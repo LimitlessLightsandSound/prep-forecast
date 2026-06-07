@@ -42,7 +42,7 @@
   .sec::after{content:"";flex:1;height:1px;background:var(--line)}
   .days{display:flex;flex-direction:column;gap:12px}
   .day{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;
-    display:grid;grid-template-columns:118px 1fr 96px;transition:border-color .15s ease,transform .15s ease}
+    display:grid;grid-template-columns:104px 1fr 84px 176px;transition:border-color .15s ease,transform .15s ease}
   .day:hover{border-color:#39414f;transform:translateY(-1px)}
   .d-date{background:linear-gradient(160deg,var(--panel-2),#10131a);padding:18px 20px;
     display:flex;flex-direction:column;justify-content:center;border-right:1px solid var(--line)}
@@ -101,27 +101,18 @@
   .tab{background:none;border:none;color:var(--muted);font-family:'Inter';font-size:13px;font-weight:600;
     padding:9px 4px;margin-right:20px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
   .tab:hover{color:var(--ink)} .tab.active{color:var(--cyan);border-bottom-color:var(--cyan)}
-  .ticker{display:flex;align-items:center;gap:12px;background:var(--amber-dim);border:1px solid rgba(232,168,56,.35);
-    border-radius:11px;padding:9px 14px;margin-bottom:18px;overflow:hidden}
-  .ticker-lbl{color:var(--amber);font-weight:800;font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;flex-shrink:0}
-  .ticker-track{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
-  .ticker-track::-webkit-scrollbar{display:none}
-  .ticker-pill{flex-shrink:0;font-size:12px;color:var(--ink);text-decoration:none;background:var(--panel-2);
-    border:1px solid var(--line);border-radius:999px;padding:3px 11px;white-space:nowrap}
-  .ticker-pill:hover{border-color:var(--amber)} .ticker-pill b{color:var(--amber);margin-left:3px}
-  .truck-panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 20px 18px;margin-bottom:30px}
-  .truck-head{font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:#fff;margin-bottom:6px}
-  .truck-day{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--cyan);font-weight:700;
-    margin:14px 0 2px;padding-bottom:4px;border-bottom:1px solid var(--line)}
-  .truck-row{display:flex;align-items:center;gap:10px;padding:7px 0;font-size:13px}
-  .truck-ic{font-size:12px;width:16px;text-align:center}
-  .truck-act{font-size:10.5px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;min-width:58px}
-  .truck-row.pickup .truck-act,.truck-row.pickup .truck-ic{color:var(--green)}
-  .truck-row.return .truck-act,.truck-row.return .truck-ic{color:var(--violet)}
-  .truck-vendor{color:var(--ink);font-weight:600} .truck-n{color:var(--muted);font-weight:400;font-size:11.5px}
-  .truck-job{margin-left:auto;text-align:right}
-  .truck-job a{color:var(--faint);text-decoration:none;border-bottom:1px dotted var(--faint);font-size:12px}
-  .truck-job a:hover{color:var(--cyan);border-bottom-color:var(--cyan)}
+  .d-logi{border-left:1px solid var(--line);padding:11px 13px;display:flex;flex-direction:column;
+    gap:9px;justify-content:center;background:linear-gradient(160deg,#10131a,var(--panel-2))}
+  .lgrp{display:flex;flex-direction:column;gap:4px}
+  .lgrp a,.lgrp>span.lj{font-size:11px;font-weight:600;color:var(--ink);text-decoration:none;
+    border-bottom:1px dotted var(--faint);align-self:flex-start;line-height:1.25}
+  .lgrp a:hover{color:var(--cyan);border-bottom-color:var(--cyan)}
+  .lchips{display:flex;flex-wrap:wrap;gap:4px}
+  .lchip{font-size:9px;font-weight:700;letter-spacing:.3px;padding:1px 6px;border-radius:5px;white-space:nowrap}
+  .lchip.vend{color:var(--green);background:rgba(75,191,135,.12);border:1px solid rgba(75,191,135,.35)}
+  .lchip.unalloc{color:var(--amber);background:var(--amber-dim);border:1px solid rgba(232,168,56,.45)}
+  .lchip.short{color:#e88b8b;background:rgba(214,90,90,.12);border:1px solid rgba(214,90,90,.4)}
+  .lnone{color:var(--faint);font-size:14px;text-align:center}
   .logi-unalloc{color:var(--amber);font-weight:700} .logi-cnt{color:var(--amber);font-weight:700;font-size:12px}
   .dtable{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:10px}
   .dtable th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;padding:7px 10px;border-bottom:1px solid var(--line)}
@@ -131,8 +122,6 @@
   .short-block{padding:9px 0;border-bottom:1px solid var(--line)}
   .short-job a{color:var(--ink);text-decoration:none;border-bottom:1px dotted var(--faint)}
   .short-job a:hover{color:var(--cyan)} .short-items{font-size:12px;color:var(--faint);margin-top:3px}
-  @media(max-width:720px){.truck-row{flex-wrap:wrap}.truck-job{margin-left:0;text-align:left;flex-basis:100%}
-    .dtable th:nth-child(4),.dtable th:nth-child(5),.dtable td:nth-child(4),.dtable td:nth-child(5){display:none}}
   .gate{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
     background:rgba(8,10,14,.93);backdrop-filter:blur(5px)}
   .gate.hidden{display:none}
@@ -151,6 +140,7 @@
     .summary{grid-template-columns:repeat(2,1fr)}
     .day{grid-template-columns:90px 1fr}
     .d-staff{grid-column:1/-1;flex-direction:row;gap:12px;border-left:none;border-top:1px solid var(--line)}
+    .d-logi{grid-column:1/-1;border-left:none;border-top:1px solid var(--line)}
     main,header{padding-left:18px;padding-right:18px}
     .tag{min-width:52px}
   }
@@ -187,8 +177,6 @@
   <section id="view-main">
     <div class="summary" id="summary"></div>
     <div id="risk"></div>
-    <div id="ticker"></div>
-    <div id="truck"></div>
     <div class="sec"><span class="tick"></span>Daily Breakdown</div>
     <div class="days" id="days"></div>
     <div class="note">
@@ -219,6 +207,11 @@
   function render(payload){
     const data = payload.days || [];
     const rmsBase = payload.rms_base || "";   // opp link base: rmsBase + /opportunities/<id>
+    function joblink(id, nm){
+      return (id && rmsBase)
+        ? '<a href="'+rmsBase+'/opportunities/'+encodeURIComponent(id)+'?view=d" target="_blank" rel="noopener">'+esc(nm)+'</a>'
+        : esc(nm);
+    }
     document.getElementById("shiftnote").textContent = payload.shift_hours || 8;
     if(payload.generated_at){
       document.getElementById("updated").textContent =
@@ -260,6 +253,13 @@
         : '';
       const cont = +d.contingency_hands||0;
       const contNote = cont>0 ? '<span class="cont-note">+'+cont+' if quotes confirm</span>' : '';
+      const logiCol = '<div class="d-logi">'+((d.logi&&d.logi.length) ? d.logi.map(function(g){
+        let chips='';
+        (g.vendors||[]).forEach(function(v){ chips+='<span class="lchip vend">'+esc(v)+'</span>'; });
+        if(g.unalloc)  chips+='<span class="lchip unalloc">Unallocated</span>';
+        if(g.shortage) chips+='<span class="lchip short">Short '+g.shortage+'</span>';
+        return '<div class="lgrp">'+joblink(g.id,g.name)+'<div class="lchips">'+chips+'</div></div>';
+      }).join('') : '<div class="lnone">—</div>')+'</div>';
       return '<div class="day">'+
         '<div class="d-date"><span class="dow">'+dt.dow+'</span><span class="dnum">'+dt.mon+' '+dt.dnum+'</span></div>'+
         '<div class="d-body"><div class="bars">'+
@@ -268,6 +268,7 @@
           '<div class="bar total"><span class="bl">Total</span><span class="bv">'+h(d.total_hrs)+'<small> h</small></span></div>'+
         '</div>'+cap+'<div class="jobs"><span class="jh">Jobs this day</span>'+jobs+'</div></div>'+
         '<div class="d-staff"><span class="sn">'+(+d.shop_hands||0)+'</span><span class="snl">Shop<br>Hands</span>'+contNote+'</div>'+
+        logiCol+
       '</div>';
     }).join("");
 
@@ -295,63 +296,16 @@
       rb.innerHTML = "";
     }
 
-    // --- Logistics: shortage ticker + truck plan (main) · item detail (tab 2) ---
+    // --- Logistics Detail tab: item-level sub-rentals + full shortage lists ---
     const subs = payload.sub_rentals || [];
     const shorts = payload.shortages || [];
-    function joblink(id, nm){
-      return (id && rmsBase)
-        ? '<a href="'+rmsBase+'/opportunities/'+encodeURIComponent(id)+'?view=d" target="_blank" rel="noopener">'+esc(nm)+'</a>'
-        : esc(nm);
-    }
-    function md(ds){ const o=fd(ds); return o.mon+' '+o.dnum; }
-
-    // Shortage ticker
-    const ticker = document.getElementById("ticker");
-    if(shorts.length){
-      const tot = shorts.reduce(function(a,s){return a+s.count;},0);
-      ticker.innerHTML = '<div class="ticker"><span class="ticker-lbl">⚠ '+tot+' short</span><div class="ticker-track">'+
-        shorts.map(function(s){ const href=(s.id&&rmsBase)?rmsBase+'/opportunities/'+encodeURIComponent(s.id)+'?view=d':'#';
-          return '<a class="ticker-pill" href="'+href+'" target="_blank" rel="noopener">'+esc(s.name)+' <b>'+s.count+'</b></a>'; }).join('')+
-        '</div></div>';
-    } else ticker.innerHTML = '';
-
-    // Truck plan: pickups (prep day) + returns (de-prep day), by day -> vendor/job
-    const today0 = new Date(payload.generated_at); today0.setHours(0,0,0,0);
-    const horiz = new Date(today0); horiz.setDate(horiz.getDate() + (payload.horizon_days||14));
-    function inWin(ds){ if(!ds) return false; const d=new Date(ds+'T00:00:00'); return d>=today0 && d<=horiz; }
-    const evs = [];
-    subs.forEach(function(s){
-      if(inWin(s.pickup))   evs.push({date:s.pickup,    dir:'pickup', vendor:s.supplier||'Unallocated', job:s.name, id:s.id});
-      if(inWin(s['return'])) evs.push({date:s['return'], dir:'return', vendor:s.supplier||'Unallocated', job:s.name, id:s.id});
-    });
-    const agg = {};
-    evs.forEach(function(e){ const k=e.date+'|'+e.dir+'|'+e.vendor+'|'+e.job;
-      if(!agg[k]) agg[k]=Object.assign({},e,{lines:0}); agg[k].lines++; });
-    const tlist = Object.keys(agg).map(function(k){return agg[k];}).sort(function(a,b){
-      return a.date<b.date?-1:a.date>b.date?1:(a.dir<b.dir?-1:a.dir>b.dir?1:0); });
-    const truck = document.getElementById("truck");
-    if(tlist.length){
-      let th='', cur='';
-      tlist.forEach(function(e){
-        if(e.date!==cur){ cur=e.date; const o=fd(e.date); th+='<div class="truck-day">'+o.dow+' '+o.mon+' '+o.dnum+'</div>'; }
-        const ic = e.dir==='pickup'?'⬆':'⬇';
-        const lbl= e.dir==='pickup'?'Pick up':'Return';
-        th += '<div class="truck-row '+e.dir+'"><span class="truck-ic">'+ic+'</span>'+
-              '<span class="truck-act">'+lbl+'</span>'+
-              '<span class="truck-vendor">'+esc(e.vendor)+' <span class="truck-n">'+e.lines+' item'+(e.lines>1?'s':'')+'</span></span>'+
-              '<span class="truck-job">'+joblink(e.id,e.job)+'</span></div>';
-      });
-      truck.innerHTML = '<div class="truck-panel"><div class="truck-head">🚚 Truck Plan — pickups &amp; returns, next '+(payload.horizon_days||14)+' days</div>'+th+'</div>';
-    } else truck.innerHTML = '';
-
-    // Detail tab: item-level sub-rentals + full shortage lists
     let dh='';
     if(subs.length){
       dh += '<div class="sec"><span class="tick"></span>Sub-rentals</div>'+
-        '<table class="dtable"><thead><tr><th>Item</th><th>Qty</th><th>Supplier</th><th>Pickup</th><th>Return</th><th>Job</th></tr></thead><tbody>'+
+        '<table class="dtable"><thead><tr><th>Item</th><th>Qty</th><th>Supplier</th><th>Job</th></tr></thead><tbody>'+
         subs.map(function(s){
           const sup = s.supplier ? esc(s.supplier) : '<span class="logi-unalloc">Unallocated</span>';
-          return '<tr><td>'+esc(s.item)+'</td><td>'+(+s.qty)+'</td><td>'+sup+'</td><td>'+(s.pickup?md(s.pickup):'—')+'</td><td>'+(s['return']?md(s['return']):'—')+'</td><td class="dt-job">'+joblink(s.id,s.name)+'</td></tr>';
+          return '<tr><td>'+esc(s.item)+'</td><td>'+(+s.qty)+'</td><td>'+sup+'</td><td class="dt-job">'+joblink(s.id,s.name)+'</td></tr>';
         }).join('')+'</tbody></table>';
     }
     if(shorts.length){

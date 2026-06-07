@@ -241,8 +241,10 @@ def main():
                     buckets[d]["jobs"][(oid, name, "DEPREP", confirmed)] += per
 
     rows = []
+    prep_map = {}   # date -> set of opp ids with PREP that day (for the per-day ticket)
     for d in sorted(buckets):
         b = buckets[d]
+        prep_map[d.isoformat()] = {o for (o, n, ph, cf) in b["jobs"] if ph == "PREP"}
         prep_mins   = b["prep_c"] + b["prep_r"]
         deprep_mins = b["deprep_c"] + b["deprep_r"]
         confirmed_mins = b["prep_c"] + b["deprep_c"]
@@ -328,12 +330,6 @@ def main():
                 "items": [it.get("name") for it in short_lines[:8]],
             })
         if any(it.get("sub_rent") for it in items):
-            # Truck dates reuse the job's existing windows: pick up on the prep
-            # start, return on the de-prep/return start. No sub-rent-specific dates.
-            pua = first_key(opp, PREP_START_KEYS)
-            rta = first_key(opp, RETURN_START_KEYS)
-            pu  = date_only(parse_dt(pua)) if pua else None
-            ret = date_only(parse_dt(rta)) if rta else None
             nested = get_all(f"/opportunities/{oid}/opportunity_items",
                              "opportunity_items", page_size=100)
             for it in nested:
@@ -343,10 +339,37 @@ def main():
                             "id": oid, "name": name,
                             "item": it.get("name"), "qty": num(a.get("quantity")),
                             "supplier": supplier_name(a.get("supplier_id")),
-                            "pickup": pu.isoformat() if pu else None,    # = prep start
-                            "return": ret.isoformat() if ret else None,  # = de-prep start
                         })
-    sub_rentals.sort(key=lambda s: s.get("pickup") or "")
+    sub_rentals.sort(key=lambda s: (s["name"], s["item"]))
+
+    # Per-prep-day logistics ticket: for each prep day, the jobs prepping that day
+    # that have sub-rentals (vendor / unallocated) or shortages. No pickup/return
+    # direction is implied — vendors may deliver or be collected.
+    names = {o.get("id"): (o.get("subject") or o.get("number") or f"Opp {o.get('id')}")
+             for o in opps}
+    sub_by_job = {}
+    for s in sub_rentals:
+        e = sub_by_job.setdefault(s["id"], {"vendors": set(), "unalloc": False})
+        if s["supplier"]:
+            e["vendors"].add(s["supplier"])
+        else:
+            e["unalloc"] = True
+    short_by_job = {s["id"]: s["count"] for s in shortages}
+    for row in rows:
+        logi = []
+        for joid in prep_map.get(row["date"], set()):
+            v = sub_by_job.get(joid)
+            sc = short_by_job.get(joid, 0)
+            if not v and not sc:
+                continue
+            logi.append({
+                "id": joid, "name": names.get(joid, f"Opp {joid}"),
+                "vendors": sorted(v["vendors"]) if v else [],
+                "unalloc": bool(v and v["unalloc"]),
+                "shortage": sc,
+            })
+        logi.sort(key=lambda x: x["name"])
+        row["logi"] = logi
     shortages.sort(key=lambda s: s["out_date"])
 
     payload = {
