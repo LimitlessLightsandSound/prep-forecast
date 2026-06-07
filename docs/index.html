@@ -106,6 +106,7 @@
   .d-logi-h{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:700;margin-bottom:1px}
   .shmark{font-size:9px;font-weight:800;color:#fff;background:#d65a5a;border-radius:999px;padding:0 5px;margin-left:6px}
   .lgrp{display:flex;flex-direction:column;gap:4px}
+  .lgrp-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
   .lgrp a,.lgrp>span.lj{font-size:11px;font-weight:600;color:var(--ink);text-decoration:none;
     border-bottom:1px dotted var(--faint);align-self:flex-start;line-height:1.25}
   .lgrp a:hover{color:var(--cyan);border-bottom-color:var(--cyan)}
@@ -245,9 +246,8 @@
           ? '<a class="jn" href="'+rmsBase+'/opportunities/'+encodeURIComponent(j.id)+'?view=d" target="_blank" rel="noopener">'+esc(j.name)+'</a>'
           : '<span class="jn">'+esc(j.name)+'</span>';
         const qf = (j.confirmed===false) ? '<span class="qflag">QUOTE</span>' : '';
-        const sf = (+j.short) ? '<span class="shmark" title="'+(+j.short)+' shortage line(s) in RMS">'+(+j.short)+'</span>' : '';
         return '<div class="job"><span class="tag '+cls+'">'+label+'</span>'+
-               nm+sf+'<span class="jhrs">'+h(j.hours)+'h</span>'+qf+'</div>';
+               nm+'<span class="jhrs">'+h(j.hours)+'h</span>'+qf+'</div>';
       }).join("") || '<div class="job"><span class="jn" style="color:var(--faint)">—</span></div>';
       const firm=+d.confirmed_hrs||0, atr=+d.atrisk_hrs||0;
       const cap = atr>0
@@ -260,7 +260,8 @@
         let chips='';
         (g.vendors||[]).forEach(function(v){ chips+='<span class="lchip vend">'+esc(v)+'</span>'; });
         if(g.unalloc) chips+='<span class="lchip unalloc">Unallocated</span>';
-        return '<div class="lgrp">'+joblink(g.id,g.name)+'<div class="lchips">'+chips+'</div></div>';
+        const sb = g.shortage ? '<span class="shmark" title="'+g.shortage+' shortage line(s) in RMS">'+g.shortage+'</span>' : '';
+        return '<div class="lgrp"><div class="lgrp-top">'+joblink(g.id,g.name)+sb+'</div>'+(chips?'<div class="lchips">'+chips+'</div>':'')+'</div>';
       }).join('') : '<div class="lnone">—</div>')+'</div>';
       return '<div class="day">'+
         '<div class="d-date"><span class="dow">'+dt.dow+'</span><span class="dnum">'+dt.mon+' '+dt.dnum+'</span></div>'+
