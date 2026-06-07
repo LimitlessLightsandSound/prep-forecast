@@ -295,6 +295,52 @@ def main():
         })
     risk.sort(key=lambda r: (r["out_date"], -r["value"]))
 
+    # Logistics: sub-rentals (with supplier) and shortages due out in the window.
+    # The vendor lives on the sub-rent ASSET (item_assets on the opportunity-item
+    # nested route), not the line itself — so we fetch nested items only for opps
+    # that actually have sub-rentals, and resolve supplier_id -> member name.
+    _member = {}
+    def supplier_name(sid):
+        if not sid:
+            return None
+        if sid not in _member:
+            try:
+                nm = (req(f"/members/{sid}").get("member", {}) or {}).get("name") or ""
+            except SystemExit:
+                nm = ""
+            _member[sid] = nm.replace("(SUPPLIER)", "").strip() or None
+        return _member[sid]
+
+    sub_rentals, shortages = [], []
+    for opp in opps:
+        out = first_key(opp, OUT_KEYS)
+        od = date_only(parse_dt(out)) if out else None
+        if not (od and today <= od <= horizon):
+            continue
+        oid  = opp.get("id")
+        name = opp.get("subject") or opp.get("number") or f"Opp {oid}"
+        items = opp.get("opportunity_items", [])
+        short_lines = [it for it in items if it.get("has_shortage")]
+        if short_lines:
+            shortages.append({
+                "id": oid, "name": name, "out_date": od.isoformat(),
+                "count": len(short_lines),
+                "items": [it.get("name") for it in short_lines[:8]],
+            })
+        if any(it.get("sub_rent") for it in items):
+            nested = get_all(f"/opportunities/{oid}/opportunity_items",
+                             "opportunity_items", page_size=100)
+            for it in nested:
+                for a in (it.get("item_assets") or []):
+                    if a.get("sub_rent"):
+                        sub_rentals.append({
+                            "id": oid, "name": name, "out_date": od.isoformat(),
+                            "item": it.get("name"), "qty": num(a.get("quantity")),
+                            "supplier": supplier_name(a.get("supplier_id")),
+                        })
+    sub_rentals.sort(key=lambda s: s["out_date"])
+    shortages.sort(key=lambda s: s["out_date"])
+
     payload = {
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "horizon_days": DAYS,
@@ -303,6 +349,8 @@ def main():
         "rms_base": f"https://{SUBDOMAIN}.current-rms.com",  # opp link = rms_base/opportunities/<id>
         "days": rows,
         "risk": risk,
+        "sub_rentals": sub_rentals,
+        "shortages": shortages,
     }
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     raw = json.dumps(payload, indent=2).encode("utf-8")

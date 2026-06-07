@@ -97,6 +97,25 @@
   .risk-meta{color:var(--faint);font-size:12px;text-align:right;white-space:nowrap}
   .risk-meta .pill{color:var(--amber);font-weight:700}
   @media(max-width:720px){.risk-row{grid-template-columns:1fr;gap:2px}.risk-meta{text-align:left}}
+  .logi-panel{background:linear-gradient(180deg,rgba(63,199,212,.08),rgba(63,199,212,.02));
+    border:1px solid rgba(63,199,212,.35);border-radius:14px;padding:16px 20px;margin-bottom:30px}
+  .logi-head{font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:var(--cyan)}
+  .logi-sub-h{font-size:10.5px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);
+    font-weight:700;margin:13px 0 4px}
+  .logi-row{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;padding:6px 0;
+    border-top:1px solid rgba(63,199,212,.14);font-size:13px}
+  .logi-date{color:var(--cyan);font-weight:700;font-size:11px;text-transform:uppercase;
+    letter-spacing:.5px;min-width:58px}
+  .logi-item{color:var(--ink);font-weight:500}
+  .logi-qty{color:var(--muted);font-size:11px}
+  .logi-arrow{color:var(--muted)}
+  .logi-sup{color:var(--green);font-weight:600}
+  .logi-unalloc{color:var(--amber);font-weight:700}
+  .logi-job a{color:var(--faint);text-decoration:none;border-bottom:1px dotted var(--faint);font-size:12px}
+  .logi-job a:hover{color:var(--cyan);border-bottom-color:var(--cyan)}
+  .logi-row:not(.short) .logi-job{margin-left:auto}
+  .logi-cnt{color:var(--amber);font-weight:700;font-size:12px}
+  .logi-items{color:var(--faint);font-size:11.5px;flex-basis:100%;padding-left:58px}
   .gate{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
     background:rgba(8,10,14,.93);backdrop-filter:blur(5px)}
   .gate.hidden{display:none}
@@ -145,6 +164,7 @@
   <div id="status"></div>
   <div class="summary" id="summary"></div>
   <div id="risk"></div>
+  <div id="logistics"></div>
   <div class="sec"><span class="tick"></span>Daily Breakdown</div>
   <div class="days" id="days"></div>
   <div class="note">
@@ -245,6 +265,43 @@
     } else {
       rb.innerHTML = "";
     }
+
+    // Logistics panel: sub-rentals (with supplier) + shortages by job
+    const subs = payload.sub_rentals || [];
+    const shorts = payload.shortages || [];
+    const lb = document.getElementById("logistics");
+    function joblink(id, nm){
+      return (id && rmsBase)
+        ? '<a href="'+rmsBase+'/opportunities/'+encodeURIComponent(id)+'?view=d" target="_blank" rel="noopener">'+esc(nm)+'</a>'
+        : esc(nm);
+    }
+    if(subs.length || shorts.length){
+      let html = '<div class="logi-panel"><div class="logi-head">📦 Logistics — next '+(payload.horizon_days||14)+' days</div>';
+      if(subs.length){
+        html += '<div class="logi-sub-h">Sub-rentals ('+subs.length+')</div>';
+        html += subs.map(function(s){
+          const o = fd(s.out_date);
+          const sup = s.supplier ? '<span class="logi-sup">'+esc(s.supplier)+'</span>' : '<span class="logi-unalloc">Unallocated</span>';
+          return '<div class="logi-row"><span class="logi-date">Out '+o.mon+' '+o.dnum+'</span>'+
+                 '<span class="logi-item">'+esc(s.item)+' <span class="logi-qty">×'+(+s.qty)+'</span></span>'+
+                 '<span class="logi-arrow">→ '+sup+'</span>'+
+                 '<span class="logi-job">'+joblink(s.id, s.name)+'</span></div>';
+        }).join("");
+      }
+      if(shorts.length){
+        const totLines = shorts.reduce(function(a,s){return a+s.count;},0);
+        html += '<div class="logi-sub-h">Shortages ('+totLines+' lines · '+shorts.length+' jobs)</div>';
+        html += shorts.map(function(s){
+          const o = fd(s.out_date);
+          const preview = (s.items||[]).slice(0,4).join(", ") + (s.count>4 ? ", +"+(s.count-4)+" more" : "");
+          return '<div class="logi-row short"><span class="logi-date">Out '+o.mon+' '+o.dnum+'</span>'+
+                 '<span class="logi-job">'+joblink(s.id, s.name)+'</span>'+
+                 '<span class="logi-cnt">'+s.count+' short</span>'+
+                 '<span class="logi-items">'+esc(preview)+'</span></div>';
+        }).join("");
+      }
+      lb.innerHTML = html + '</div>';
+    } else { lb.innerHTML = ""; }
   }
 
   // --- Shared-passphrase decryption (AES-256-GCM, PBKDF2), runs in-browser ---
