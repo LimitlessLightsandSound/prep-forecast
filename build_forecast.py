@@ -356,17 +356,19 @@ def main():
             e["unalloc"] = True
     short_by_job = {s["id"]: s["count"] for s in shortages}
     for row in rows:
+        # shortage shows as a red marker by the opportunity name in the job list
+        for j in row["jobs"]:
+            j["short"] = short_by_job.get(j["id"], 0)
+        # sub-rentals ticket: jobs prepping that day that have sub-rentals only
         logi = []
         for joid in prep_map.get(row["date"], set()):
             v = sub_by_job.get(joid)
-            sc = short_by_job.get(joid, 0)
-            if not v and not sc:
+            if not v:
                 continue
             logi.append({
                 "id": joid, "name": names.get(joid, f"Opp {joid}"),
-                "vendors": sorted(v["vendors"]) if v else [],
-                "unalloc": bool(v and v["unalloc"]),
-                "shortage": sc,
+                "vendors": sorted(v["vendors"]),
+                "unalloc": v["unalloc"],
             })
         logi.sort(key=lambda x: x["name"])
         row["logi"] = logi

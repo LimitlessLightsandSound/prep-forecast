@@ -102,7 +102,9 @@
     padding:9px 4px;margin-right:20px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
   .tab:hover{color:var(--ink)} .tab.active{color:var(--cyan);border-bottom-color:var(--cyan)}
   .d-logi{border-left:1px solid var(--line);padding:11px 13px;display:flex;flex-direction:column;
-    gap:9px;justify-content:center;background:linear-gradient(160deg,#10131a,var(--panel-2))}
+    gap:7px;justify-content:center;background:linear-gradient(160deg,#10131a,var(--panel-2))}
+  .d-logi-h{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:700;margin-bottom:1px}
+  .shmark{font-size:9px;font-weight:800;color:#fff;background:#d65a5a;border-radius:999px;padding:0 5px;margin-left:6px}
   .lgrp{display:flex;flex-direction:column;gap:4px}
   .lgrp a,.lgrp>span.lj{font-size:11px;font-weight:600;color:var(--ink);text-decoration:none;
     border-bottom:1px dotted var(--faint);align-self:flex-start;line-height:1.25}
@@ -243,8 +245,9 @@
           ? '<a class="jn" href="'+rmsBase+'/opportunities/'+encodeURIComponent(j.id)+'?view=d" target="_blank" rel="noopener">'+esc(j.name)+'</a>'
           : '<span class="jn">'+esc(j.name)+'</span>';
         const qf = (j.confirmed===false) ? '<span class="qflag">QUOTE</span>' : '';
+        const sf = (+j.short) ? '<span class="shmark" title="'+(+j.short)+' shortage line(s) in RMS">'+(+j.short)+'</span>' : '';
         return '<div class="job"><span class="tag '+cls+'">'+label+'</span>'+
-               nm+'<span class="jhrs">'+h(j.hours)+'h</span>'+qf+'</div>';
+               nm+sf+'<span class="jhrs">'+h(j.hours)+'h</span>'+qf+'</div>';
       }).join("") || '<div class="job"><span class="jn" style="color:var(--faint)">—</span></div>';
       const firm=+d.confirmed_hrs||0, atr=+d.atrisk_hrs||0;
       const cap = atr>0
@@ -253,11 +256,10 @@
         : '';
       const cont = +d.contingency_hands||0;
       const contNote = cont>0 ? '<span class="cont-note">+'+cont+' if quotes confirm</span>' : '';
-      const logiCol = '<div class="d-logi">'+((d.logi&&d.logi.length) ? d.logi.map(function(g){
+      const logiCol = '<div class="d-logi"><div class="d-logi-h">Sub-rentals</div>'+((d.logi&&d.logi.length) ? d.logi.map(function(g){
         let chips='';
         (g.vendors||[]).forEach(function(v){ chips+='<span class="lchip vend">'+esc(v)+'</span>'; });
-        if(g.unalloc)  chips+='<span class="lchip unalloc">Unallocated</span>';
-        if(g.shortage) chips+='<span class="lchip short">Short '+g.shortage+'</span>';
+        if(g.unalloc) chips+='<span class="lchip unalloc">Unallocated</span>';
         return '<div class="lgrp">'+joblink(g.id,g.name)+'<div class="lchips">'+chips+'</div></div>';
       }).join('') : '<div class="lnone">—</div>')+'</div>';
       return '<div class="day">'+
