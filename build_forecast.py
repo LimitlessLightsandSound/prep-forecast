@@ -328,17 +328,25 @@ def main():
                 "items": [it.get("name") for it in short_lines[:8]],
             })
         if any(it.get("sub_rent") for it in items):
+            # Truck dates reuse the job's existing windows: pick up on the prep
+            # start, return on the de-prep/return start. No sub-rent-specific dates.
+            pua = first_key(opp, PREP_START_KEYS)
+            rta = first_key(opp, RETURN_START_KEYS)
+            pu  = date_only(parse_dt(pua)) if pua else None
+            ret = date_only(parse_dt(rta)) if rta else None
             nested = get_all(f"/opportunities/{oid}/opportunity_items",
                              "opportunity_items", page_size=100)
             for it in nested:
                 for a in (it.get("item_assets") or []):
                     if a.get("sub_rent"):
                         sub_rentals.append({
-                            "id": oid, "name": name, "out_date": od.isoformat(),
+                            "id": oid, "name": name,
                             "item": it.get("name"), "qty": num(a.get("quantity")),
                             "supplier": supplier_name(a.get("supplier_id")),
+                            "pickup": pu.isoformat() if pu else None,    # = prep start
+                            "return": ret.isoformat() if ret else None,  # = de-prep start
                         })
-    sub_rentals.sort(key=lambda s: s["out_date"])
+    sub_rentals.sort(key=lambda s: s.get("pickup") or "")
     shortages.sort(key=lambda s: s["out_date"])
 
     payload = {

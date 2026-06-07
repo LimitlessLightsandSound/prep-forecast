@@ -97,25 +97,42 @@
   .risk-meta{color:var(--faint);font-size:12px;text-align:right;white-space:nowrap}
   .risk-meta .pill{color:var(--amber);font-weight:700}
   @media(max-width:720px){.risk-row{grid-template-columns:1fr;gap:2px}.risk-meta{text-align:left}}
-  .logi-panel{background:linear-gradient(180deg,rgba(63,199,212,.08),rgba(63,199,212,.02));
-    border:1px solid rgba(63,199,212,.35);border-radius:14px;padding:16px 20px;margin-bottom:30px}
-  .logi-head{font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:var(--cyan)}
-  .logi-sub-h{font-size:10.5px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);
-    font-weight:700;margin:13px 0 4px}
-  .logi-row{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;padding:6px 0;
-    border-top:1px solid rgba(63,199,212,.14);font-size:13px}
-  .logi-date{color:var(--cyan);font-weight:700;font-size:11px;text-transform:uppercase;
-    letter-spacing:.5px;min-width:58px}
-  .logi-item{color:var(--ink);font-weight:500}
-  .logi-qty{color:var(--muted);font-size:11px}
-  .logi-arrow{color:var(--muted)}
-  .logi-sup{color:var(--green);font-weight:600}
-  .logi-unalloc{color:var(--amber);font-weight:700}
-  .logi-job a{color:var(--faint);text-decoration:none;border-bottom:1px dotted var(--faint);font-size:12px}
-  .logi-job a:hover{color:var(--cyan);border-bottom-color:var(--cyan)}
-  .logi-row:not(.short) .logi-job{margin-left:auto}
-  .logi-cnt{color:var(--amber);font-weight:700;font-size:12px}
-  .logi-items{color:var(--faint);font-size:11.5px;flex-basis:100%;padding-left:58px}
+  .tabs{display:flex;margin-bottom:22px;border-bottom:1px solid var(--line)}
+  .tab{background:none;border:none;color:var(--muted);font-family:'Inter';font-size:13px;font-weight:600;
+    padding:9px 4px;margin-right:20px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tab:hover{color:var(--ink)} .tab.active{color:var(--cyan);border-bottom-color:var(--cyan)}
+  .ticker{display:flex;align-items:center;gap:12px;background:var(--amber-dim);border:1px solid rgba(232,168,56,.35);
+    border-radius:11px;padding:9px 14px;margin-bottom:18px;overflow:hidden}
+  .ticker-lbl{color:var(--amber);font-weight:800;font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;flex-shrink:0}
+  .ticker-track{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+  .ticker-track::-webkit-scrollbar{display:none}
+  .ticker-pill{flex-shrink:0;font-size:12px;color:var(--ink);text-decoration:none;background:var(--panel-2);
+    border:1px solid var(--line);border-radius:999px;padding:3px 11px;white-space:nowrap}
+  .ticker-pill:hover{border-color:var(--amber)} .ticker-pill b{color:var(--amber);margin-left:3px}
+  .truck-panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 20px 18px;margin-bottom:30px}
+  .truck-head{font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:#fff;margin-bottom:6px}
+  .truck-day{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--cyan);font-weight:700;
+    margin:14px 0 2px;padding-bottom:4px;border-bottom:1px solid var(--line)}
+  .truck-row{display:flex;align-items:center;gap:10px;padding:7px 0;font-size:13px}
+  .truck-ic{font-size:12px;width:16px;text-align:center}
+  .truck-act{font-size:10.5px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;min-width:58px}
+  .truck-row.pickup .truck-act,.truck-row.pickup .truck-ic{color:var(--green)}
+  .truck-row.return .truck-act,.truck-row.return .truck-ic{color:var(--violet)}
+  .truck-vendor{color:var(--ink);font-weight:600} .truck-n{color:var(--muted);font-weight:400;font-size:11.5px}
+  .truck-job{margin-left:auto;text-align:right}
+  .truck-job a{color:var(--faint);text-decoration:none;border-bottom:1px dotted var(--faint);font-size:12px}
+  .truck-job a:hover{color:var(--cyan);border-bottom-color:var(--cyan)}
+  .logi-unalloc{color:var(--amber);font-weight:700} .logi-cnt{color:var(--amber);font-weight:700;font-size:12px}
+  .dtable{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:10px}
+  .dtable th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;padding:7px 10px;border-bottom:1px solid var(--line)}
+  .dtable td{padding:8px 10px;border-bottom:1px solid var(--line);color:var(--ink)}
+  .dtable .dt-job a{color:var(--faint);text-decoration:none;border-bottom:1px dotted var(--faint);font-size:12px}
+  .dtable .dt-job a:hover{color:var(--cyan);border-bottom-color:var(--cyan)}
+  .short-block{padding:9px 0;border-bottom:1px solid var(--line)}
+  .short-job a{color:var(--ink);text-decoration:none;border-bottom:1px dotted var(--faint)}
+  .short-job a:hover{color:var(--cyan)} .short-items{font-size:12px;color:var(--faint);margin-top:3px}
+  @media(max-width:720px){.truck-row{flex-wrap:wrap}.truck-job{margin-left:0;text-align:left;flex-basis:100%}
+    .dtable th:nth-child(4),.dtable th:nth-child(5),.dtable td:nth-child(4),.dtable td:nth-child(5){display:none}}
   .gate{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
     background:rgba(8,10,14,.93);backdrop-filter:blur(5px)}
   .gate.hidden{display:none}
@@ -162,16 +179,28 @@
 </header>
 <main>
   <div id="status"></div>
-  <div class="summary" id="summary"></div>
-  <div id="risk"></div>
-  <div id="logistics"></div>
-  <div class="sec"><span class="tick"></span>Daily Breakdown</div>
-  <div class="days" id="days"></div>
-  <div class="note">
-    <b>Reading it:</b> each job is tagged <span class="tag prep" style="display:inline-block;min-width:0;padding:1px 6px">Prep</span> (building) or
-    <span class="tag deprep" style="display:inline-block;min-width:0;padding:1px 6px">De-prep</span> (tearing down / checking in). Hours are spread across each job's scheduled days.
-    <b>Shop Hands</b> is the raw figure — total hours &divide; <span id="shiftnote">8</span>-hour shift, rounded up. A workload number, not a roster.
-  </div>
+  <nav class="tabs">
+    <button class="tab active" data-view="main">Forecast</button>
+    <button class="tab" data-view="detail">Logistics Detail</button>
+  </nav>
+
+  <section id="view-main">
+    <div class="summary" id="summary"></div>
+    <div id="risk"></div>
+    <div id="ticker"></div>
+    <div id="truck"></div>
+    <div class="sec"><span class="tick"></span>Daily Breakdown</div>
+    <div class="days" id="days"></div>
+    <div class="note">
+      <b>Reading it:</b> each job is tagged <span class="tag prep" style="display:inline-block;min-width:0;padding:1px 6px">Prep</span> (building) or
+      <span class="tag deprep" style="display:inline-block;min-width:0;padding:1px 6px">De-prep</span> (tearing down / checking in). Hours are spread across each job's scheduled days.
+      <b>Shop Hands</b> is the raw figure — total hours &divide; <span id="shiftnote">8</span>-hour shift, rounded up. A workload number, not a roster.
+    </div>
+  </section>
+
+  <section id="view-detail" style="display:none">
+    <div id="logi-detail"></div>
+  </section>
 </main>
 <script>
   // Dashboard reads forecast.json sitting next to it in the same GitHub Pages repo.
@@ -266,42 +295,73 @@
       rb.innerHTML = "";
     }
 
-    // Logistics panel: sub-rentals (with supplier) + shortages by job
+    // --- Logistics: shortage ticker + truck plan (main) · item detail (tab 2) ---
     const subs = payload.sub_rentals || [];
     const shorts = payload.shortages || [];
-    const lb = document.getElementById("logistics");
     function joblink(id, nm){
       return (id && rmsBase)
         ? '<a href="'+rmsBase+'/opportunities/'+encodeURIComponent(id)+'?view=d" target="_blank" rel="noopener">'+esc(nm)+'</a>'
         : esc(nm);
     }
-    if(subs.length || shorts.length){
-      let html = '<div class="logi-panel"><div class="logi-head">📦 Logistics — next '+(payload.horizon_days||14)+' days</div>';
-      if(subs.length){
-        html += '<div class="logi-sub-h">Sub-rentals ('+subs.length+')</div>';
-        html += subs.map(function(s){
-          const o = fd(s.out_date);
-          const sup = s.supplier ? '<span class="logi-sup">'+esc(s.supplier)+'</span>' : '<span class="logi-unalloc">Unallocated</span>';
-          return '<div class="logi-row"><span class="logi-date">Out '+o.mon+' '+o.dnum+'</span>'+
-                 '<span class="logi-item">'+esc(s.item)+' <span class="logi-qty">×'+(+s.qty)+'</span></span>'+
-                 '<span class="logi-arrow">→ '+sup+'</span>'+
-                 '<span class="logi-job">'+joblink(s.id, s.name)+'</span></div>';
-        }).join("");
-      }
-      if(shorts.length){
-        const totLines = shorts.reduce(function(a,s){return a+s.count;},0);
-        html += '<div class="logi-sub-h">Shortages ('+totLines+' lines · '+shorts.length+' jobs)</div>';
-        html += shorts.map(function(s){
-          const o = fd(s.out_date);
-          const preview = (s.items||[]).slice(0,4).join(", ") + (s.count>4 ? ", +"+(s.count-4)+" more" : "");
-          return '<div class="logi-row short"><span class="logi-date">Out '+o.mon+' '+o.dnum+'</span>'+
-                 '<span class="logi-job">'+joblink(s.id, s.name)+'</span>'+
-                 '<span class="logi-cnt">'+s.count+' short</span>'+
-                 '<span class="logi-items">'+esc(preview)+'</span></div>';
-        }).join("");
-      }
-      lb.innerHTML = html + '</div>';
-    } else { lb.innerHTML = ""; }
+    function md(ds){ const o=fd(ds); return o.mon+' '+o.dnum; }
+
+    // Shortage ticker
+    const ticker = document.getElementById("ticker");
+    if(shorts.length){
+      const tot = shorts.reduce(function(a,s){return a+s.count;},0);
+      ticker.innerHTML = '<div class="ticker"><span class="ticker-lbl">⚠ '+tot+' short</span><div class="ticker-track">'+
+        shorts.map(function(s){ const href=(s.id&&rmsBase)?rmsBase+'/opportunities/'+encodeURIComponent(s.id)+'?view=d':'#';
+          return '<a class="ticker-pill" href="'+href+'" target="_blank" rel="noopener">'+esc(s.name)+' <b>'+s.count+'</b></a>'; }).join('')+
+        '</div></div>';
+    } else ticker.innerHTML = '';
+
+    // Truck plan: pickups (prep day) + returns (de-prep day), by day -> vendor/job
+    const today0 = new Date(payload.generated_at); today0.setHours(0,0,0,0);
+    const horiz = new Date(today0); horiz.setDate(horiz.getDate() + (payload.horizon_days||14));
+    function inWin(ds){ if(!ds) return false; const d=new Date(ds+'T00:00:00'); return d>=today0 && d<=horiz; }
+    const evs = [];
+    subs.forEach(function(s){
+      if(inWin(s.pickup))   evs.push({date:s.pickup,    dir:'pickup', vendor:s.supplier||'Unallocated', job:s.name, id:s.id});
+      if(inWin(s['return'])) evs.push({date:s['return'], dir:'return', vendor:s.supplier||'Unallocated', job:s.name, id:s.id});
+    });
+    const agg = {};
+    evs.forEach(function(e){ const k=e.date+'|'+e.dir+'|'+e.vendor+'|'+e.job;
+      if(!agg[k]) agg[k]=Object.assign({},e,{lines:0}); agg[k].lines++; });
+    const tlist = Object.keys(agg).map(function(k){return agg[k];}).sort(function(a,b){
+      return a.date<b.date?-1:a.date>b.date?1:(a.dir<b.dir?-1:a.dir>b.dir?1:0); });
+    const truck = document.getElementById("truck");
+    if(tlist.length){
+      let th='', cur='';
+      tlist.forEach(function(e){
+        if(e.date!==cur){ cur=e.date; const o=fd(e.date); th+='<div class="truck-day">'+o.dow+' '+o.mon+' '+o.dnum+'</div>'; }
+        const ic = e.dir==='pickup'?'⬆':'⬇';
+        const lbl= e.dir==='pickup'?'Pick up':'Return';
+        th += '<div class="truck-row '+e.dir+'"><span class="truck-ic">'+ic+'</span>'+
+              '<span class="truck-act">'+lbl+'</span>'+
+              '<span class="truck-vendor">'+esc(e.vendor)+' <span class="truck-n">'+e.lines+' item'+(e.lines>1?'s':'')+'</span></span>'+
+              '<span class="truck-job">'+joblink(e.id,e.job)+'</span></div>';
+      });
+      truck.innerHTML = '<div class="truck-panel"><div class="truck-head">🚚 Truck Plan — pickups &amp; returns, next '+(payload.horizon_days||14)+' days</div>'+th+'</div>';
+    } else truck.innerHTML = '';
+
+    // Detail tab: item-level sub-rentals + full shortage lists
+    let dh='';
+    if(subs.length){
+      dh += '<div class="sec"><span class="tick"></span>Sub-rentals</div>'+
+        '<table class="dtable"><thead><tr><th>Item</th><th>Qty</th><th>Supplier</th><th>Pickup</th><th>Return</th><th>Job</th></tr></thead><tbody>'+
+        subs.map(function(s){
+          const sup = s.supplier ? esc(s.supplier) : '<span class="logi-unalloc">Unallocated</span>';
+          return '<tr><td>'+esc(s.item)+'</td><td>'+(+s.qty)+'</td><td>'+sup+'</td><td>'+(s.pickup?md(s.pickup):'—')+'</td><td>'+(s['return']?md(s['return']):'—')+'</td><td class="dt-job">'+joblink(s.id,s.name)+'</td></tr>';
+        }).join('')+'</tbody></table>';
+    }
+    if(shorts.length){
+      dh += '<div class="sec"><span class="tick"></span>Shortages</div>'+
+        shorts.map(function(s){
+          const items=(s.items||[]).join(', ')+(s.count>(s.items||[]).length?', …':'');
+          return '<div class="short-block"><div class="short-job">'+joblink(s.id,s.name)+' <span class="logi-cnt">'+s.count+' short</span></div><div class="short-items">'+esc(items)+'</div></div>';
+        }).join('');
+    }
+    document.getElementById("logi-detail").innerHTML = dh || '<div class="status empty">No sub-rentals or shortages in the window.</div>';
   }
 
   // --- Shared-passphrase decryption (AES-256-GCM, PBKDF2), runs in-browser ---
@@ -336,6 +396,17 @@
   document.getElementById("gateForm").addEventListener("submit", function(e){
     e.preventDefault();
     tryUnlock(document.getElementById("gatePass").value, false);
+  });
+
+  // Tab switching (Forecast / Logistics Detail)
+  document.querySelectorAll(".tab").forEach(function(b){
+    b.addEventListener("click", function(){
+      document.querySelectorAll(".tab").forEach(function(x){ x.classList.remove("active"); });
+      b.classList.add("active");
+      const v = b.getAttribute("data-view");
+      document.getElementById("view-main").style.display   = (v==="main")   ? "" : "none";
+      document.getElementById("view-detail").style.display = (v==="detail") ? "" : "none";
+    });
   });
 
   fetch(DATA_URL + "?t=" + Date.now())   // cache-bust so the 3-hour refresh shows
