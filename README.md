@@ -31,3 +31,19 @@ routine. Dashboard hosted free on GitHub Pages.
 - Window defaults to 14 days (`FORECAST_DAYS`).
 
 No Zapier, no Google Sheet, no row-editing. Full recompute every run = always current.
+
+## Working locally
+The cloud routine pushes a new encrypted `docs/forecast.json` to `master` every 3
+hours, so **always pull before you start editing** — otherwise your push collides
+with the routine's.
+
+1. Open the repo folder in VS Code (`File -> Open Folder -> prep-forecast`), or
+   from a terminal: `code ~/Documents/prep-forecast`.
+2. `git pull` — get the latest, including the routine's most recent forecast.
+3. Make changes, then `git add`, `git commit`, `git push`.
+   - Pushing to `master` triggers GitHub Pages to redeploy the dashboard.
+   - The data refresh runs in the cloud independently — nothing to start locally.
+
+If a pull/push ever conflicts, it'll be on `docs/forecast.json`. That file is
+regenerated in full every run, so just take the remote version:
+`git checkout --theirs docs/forecast.json` (or discard your local copy of it).
