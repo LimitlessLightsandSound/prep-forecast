@@ -35,6 +35,9 @@ TRUCK_IDS = {int(x) for x in os.environ.get("TRUCK_POSITION_IDS", "31888,31992")
 PASSPHRASE   = os.environ.get("FORECAST_PASSPHRASE", "")
 PBKDF2_ITERS = 200_000
 OUT = os.path.join(os.path.dirname(__file__), "docs", "deliveries.json")
+# Click-through to the event in the Lasso app. `{id}` is substituted with the
+# event id. Override LASSO_EVENT_URL if your Lasso event route differs.
+EVENT_URL = os.environ.get("LASSO_EVENT_URL", "https://limitless.lasso.io/events/{id}")
 
 # --- Read-only by construction (mirrors build_forecast.py) ---
 ALLOWED_HOST   = urllib.parse.urlsplit(BASE).netloc
@@ -142,6 +145,7 @@ def main():
             "event_code": ev.get("code"),
             "event_name": ev.get("name"),
             "event_id": ev.get("id"),
+            "event_url": EVENT_URL.format(id=ev.get("id")) if ev.get("id") else None,
             "venue_name": ven.get("name"),
             "venue_city": ven.get("locality"),
             "venue_region": ven.get("region"),

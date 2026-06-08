@@ -95,7 +95,37 @@
     color:#06222a;font-weight:700;font-size:14px;cursor:pointer;font-family:'Inter'}
   .gate-card button:hover{filter:brightness(1.08)}
   .gate-err{color:#e88b8b;font-size:12.5px;margin-top:12px;min-height:16px}
+  .viewbar{display:inline-flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px;margin-bottom:22px}
+  .vbtn{background:none;border:none;color:var(--muted);font-family:'Inter';font-size:12.5px;font-weight:700;padding:6px 18px;border-radius:7px;cursor:pointer}
+  .vbtn.active{background:var(--panel-2);color:var(--cyan)}
+  .vbtn:hover{color:var(--ink)}
+  .elink{color:var(--ink);text-decoration:none;border-bottom:1px dotted var(--faint)}
+  .elink:hover{color:var(--cyan);border-bottom-color:var(--cyan)}
+  .cal-week{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px}
+  .cal-wk-label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--faint);font-weight:700;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--panel-2)}
+  .cal-grid{display:grid;grid-template-columns:50px repeat(7,1fr)}
+  .cal-corner{border-bottom:1px solid var(--line);border-right:1px solid var(--line)}
+  .cal-dh{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:8px 4px;text-align:center}
+  .cal-dh:last-child{border-right:none}
+  .cal-dh .dow{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--cyan);font-weight:700}
+  .cal-dh .dn{font-size:13px;color:#fff;font-weight:700;font-family:'Playfair Display',serif}
+  .cal-dh.empty,.cal-body.empty{background:repeating-linear-gradient(45deg,transparent,transparent 6px,rgba(255,255,255,.014) 6px,rgba(255,255,255,.014) 12px)}
+  .cal-axis{position:relative;border-right:1px solid var(--line)}
+  .cal-axis .hr{position:absolute;right:5px;font-size:9px;color:var(--faint);transform:translateY(-50%);font-variant-numeric:tabular-nums}
+  .cal-body{position:relative;border-right:1px solid var(--line)}
+  .cal-body:last-child{border-right:none}
+  .cal-block{position:absolute;border-radius:7px;padding:3px 6px;overflow:hidden;border:1px solid;cursor:pointer;text-decoration:none;display:block}
+  .cal-block .bt{font-size:10px;font-weight:800;font-variant-numeric:tabular-nums}
+  .cal-block .bn{font-size:10.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+  .cal-block .bd{font-size:9.5px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cal-block:hover{filter:brightness(1.18);z-index:5;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+  .cal-legend{display:flex;flex-wrap:wrap;gap:12px;margin:14px 2px 0;font-size:11.5px;color:var(--muted)}
+  .cal-legend .lg{display:inline-flex;align-items:center;gap:6px}
+  .cal-legend .sw{width:11px;height:11px;border-radius:3px;border:1px solid}
   @media(max-width:760px){
+    .cal-grid{grid-template-columns:34px repeat(7,1fr)}
+    .cal-block{font-size:8px;padding:2px 3px}
+    .cal-block .bn,.cal-block .bd{font-size:8px}
     .summary{grid-template-columns:repeat(2,1fr)}
     .day{grid-template-columns:1fr}
     .d-date{flex-direction:row;gap:10px;align-items:baseline;border-right:none;border-bottom:1px solid var(--line)}
@@ -133,8 +163,19 @@
   </nav>
   <div id="status"></div>
   <div class="summary" id="summary"></div>
-  <div class="sec"><span class="tick"></span>Drive Schedule</div>
-  <div class="days" id="days"></div>
+  <div class="viewbar">
+    <button class="vbtn active" data-cv="cal">📅 Calendar</button>
+    <button class="vbtn" data-cv="list">☰ List</button>
+  </div>
+  <section id="view-cal">
+    <div class="sec"><span class="tick"></span>Drive Calendar</div>
+    <div id="cal"></div>
+    <div class="cal-legend" id="callegend"></div>
+  </section>
+  <section id="view-list" style="display:none">
+    <div class="sec"><span class="tick"></span>Drive Schedule</div>
+    <div class="days" id="days"></div>
+  </section>
   <div class="note">
     <b>Reading it:</b> each row is one scheduled driver shift on a job — its time block, the event, the
     destination, and who's assigned. <span class="driver" style="padding:1px 8px"><span class="dot"></span>Green</span>
@@ -191,8 +232,11 @@
                      (tent?'<span class="ds">'+esc(x.status||"")+'</span>':'')+'</span>';
             }).join('')+'</div>'
           : '<span class="unassigned">No driver</span>';
+        const enInner = r.event_url
+          ? '<a class="en elink" href="'+esc(r.event_url)+'" target="_blank" rel="noopener">'+esc(r.event_name)+'</a>'
+          : '<div class="en">'+esc(r.event_name)+'</div>';
         const ev = r.event_name
-          ? '<div class="en">'+esc(r.event_name)+'</div>'+(r.event_code?'<div class="ec">'+esc(r.event_code)+'</div>':'')
+          ? enInner+(r.event_code?'<div class="ec">'+esc(r.event_code)+'</div>':'')
           : '<span class="none">—</span>';
         const dest = r.venue_name
           ? esc(r.venue_name)+((r.venue_city||r.venue_region)?'<span class="city">'+esc([r.venue_city,r.venue_region].filter(Boolean).join(", "))+'</span>':'')
@@ -210,7 +254,91 @@
         '<span class="cnt">'+byDay[date].length+' run'+(byDay[date].length>1?'s':'')+'</span></div>'+
         '<div class="d-runs">'+runs+'</div></div>';
     }).join("");
+
+    buildCalendar(drives, payload);
   }
+
+  // --- Calendar (week time-grid): days as columns, time-of-day vertical, so
+  // concurrent drives sit side-by-side and time overlaps are visible at a glance.
+  const PAL=[['#3fc7d4','rgba(63,199,212,.18)'],['#9b8cff','rgba(155,140,255,.18)'],
+             ['#4bbf87','rgba(75,191,135,.18)'],['#e8a838','rgba(232,168,56,.18)'],
+             ['#e87fb0','rgba(232,127,176,.18)'],['#7fb0e8','rgba(127,176,232,.18)']];
+  const UNASSIGNED=['#e88b8b','rgba(214,90,90,.16)'];
+  function buildCalendar(drives, payload){
+    const cal=document.getElementById("cal"), leg=document.getElementById("callegend");
+    if(!drives.length){ cal.innerHTML=""; leg.innerHTML=""; return; }
+    const toH=t=>{ if(!t) return null; const p=String(t).split(":"); return (+p[0])+((+p[1]||0)/60); };
+    // window day list
+    const days=[]; let d=new Date(payload.window.start+"T00:00:00"); const e=new Date(payload.window.end+"T00:00:00");
+    while(d<=e){ const y=d.getFullYear(),m=("0"+(d.getMonth()+1)).slice(-2),da=("0"+d.getDate()).slice(-2);
+      days.push(y+"-"+m+"-"+da); d.setDate(d.getDate()+1); }
+    const byDay={}; days.forEach(x=>byDay[x]=[]);
+    let minH=24,maxH=0;
+    drives.forEach(r=>{ if(!(r.date in byDay)) return; let s=toH(r.start),en=toH(r.end);
+      if(s==null) return; if(en==null||en<=s) en=Math.min(24,s+1.5);   // missing/over-midnight -> short block
+      minH=Math.min(minH,s); maxH=Math.max(maxH,en); byDay[r.date].push(Object.assign({},r,{s:s,e:en})); });
+    minH=Math.floor(minH); maxH=Math.ceil(maxH); if(minH>=maxH){minH=6;maxH=20;}
+    const HP=46, bodyH=(maxH-minH)*HP;
+    // greedy lane assignment within each day so overlapping drives split the width
+    Object.values(byDay).forEach(list=>{ list.sort((a,b)=>a.s-b.s||a.e-b.e); const ends=[];
+      list.forEach(b=>{ let ln=ends.findIndex(x=>x<=b.s+1e-6);
+        if(ln<0){ln=ends.length;ends.push(b.e);} else ends[ln]=b.e; b.lane=ln; });
+      const n=ends.length||1; list.forEach(b=>b.lanes=n); });
+    // stable driver -> colour
+    const colorOf={}; let ci=0;
+    const dcolor=r=>{ if(!(r.drivers||[]).length) return UNASSIGNED;
+      const k=r.drivers[0].name; if(!(k in colorOf)){ colorOf[k]=PAL[ci%PAL.length]; ci++; } return colorOf[k]; };
+    const grid="repeating-linear-gradient(to bottom,rgba(39,44,56,.55) 0,rgba(39,44,56,.55) 1px,transparent 1px,transparent "+HP+"px)";
+    function axis(){ let h=""; for(let hr=minH;hr<=maxH;hr++){ let l=hr%24,ap=l<12?"a":"p",hh=l%12||12;
+      h+='<span class="hr" style="top:'+((hr-minH)*HP)+'px">'+hh+ap+'</span>'; } return h; }
+    let html="";
+    for(let w=0; w<days.length; w+=7){
+      const chunk=days.slice(w,w+7); while(chunk.length<7) chunk.push(null);
+      const heads='<div class="cal-corner"></div>'+chunk.map(dt=>{
+        if(!dt) return '<div class="cal-dh empty"></div>';
+        const f=fd(dt); return '<div class="cal-dh"><div class="dow">'+f.dow+'</div><div class="dn">'+f.mon+' '+f.dnum+'</div></div>';
+      }).join("");
+      const bodies='<div class="cal-axis" style="height:'+bodyH+'px;background:'+grid+'">'+axis()+'</div>'+
+        chunk.map(dt=>{
+          if(!dt) return '<div class="cal-body empty" style="height:'+bodyH+'px"></div>';
+          const blocks=(byDay[dt]||[]).map(b=>{
+            const c=dcolor(b), top=(b.s-minH)*HP, hgt=Math.max(26,(b.e-b.s)*HP), wd=100/b.lanes, lf=b.lane*wd;
+            const names=(b.drivers||[]).map(x=>x.name.split(" ")[0]).join(", ")||"No driver";
+            const inner='<div class="bt" style="color:'+c[0]+'">'+esc(b.start)+'</div>'+
+                        '<div class="bn">'+esc(b.event_name||b.event_code||"")+'</div>'+
+                        '<div class="bd">'+esc(names)+'</div>';
+            const style='top:'+top+'px;height:'+(hgt-2)+'px;left:calc('+lf+'% + 2px);width:calc('+wd+'% - 4px);'+
+                        'background:'+c[1]+';border-color:'+c[0]+';color:var(--ink)';
+            const title=esc((b.start||"")+"–"+(b.end||"")+"  "+(b.event_name||"")+"  ["+names+"]");
+            return b.event_url
+              ? '<a class="cal-block" style="'+style+'" href="'+esc(b.event_url)+'" target="_blank" rel="noopener" title="'+title+'">'+inner+'</a>'
+              : '<div class="cal-block" style="'+style+'" title="'+title+'">'+inner+'</div>';
+          }).join("");
+          return '<div class="cal-body" style="height:'+bodyH+'px;background:'+grid+'">'+blocks+'</div>';
+        }).join("");
+      const first=fd(chunk[0]), lastd=chunk.filter(Boolean).slice(-1)[0], last=fd(lastd);
+      html+='<div class="cal-week"><div class="cal-wk-label">'+first.mon+' '+first.dnum+' – '+last.mon+' '+last.dnum+
+            '</div><div class="cal-grid">'+heads+bodies+'</div></div>';
+    }
+    cal.innerHTML=html;
+    // legend: colour per driver + unassigned (only if any)
+    let lg=Object.keys(colorOf).map(name=>{ const c=colorOf[name];
+      return '<span class="lg"><span class="sw" style="background:'+c[1]+';border-color:'+c[0]+'"></span>'+esc(name)+'</span>'; }).join("");
+    if(drives.some(r=>!(r.drivers||[]).length))
+      lg+='<span class="lg"><span class="sw" style="background:'+UNASSIGNED[1]+';border-color:'+UNASSIGNED[0]+'"></span>No driver</span>';
+    leg.innerHTML=lg;
+  }
+
+  // View toggle (Calendar / List)
+  document.querySelectorAll(".vbtn").forEach(function(b){
+    b.addEventListener("click", function(){
+      document.querySelectorAll(".vbtn").forEach(function(x){ x.classList.remove("active"); });
+      b.classList.add("active");
+      const v=b.getAttribute("data-cv");
+      document.getElementById("view-cal").style.display  = (v==="cal")  ? "" : "none";
+      document.getElementById("view-list").style.display = (v==="list") ? "" : "none";
+    });
+  });
 
   // --- Shared-passphrase decryption (AES-256-GCM, PBKDF2), runs in-browser ---
   const dec64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
