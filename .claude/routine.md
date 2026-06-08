@@ -16,14 +16,17 @@ off. Credentials are provided as the routine's **cloud environment variables**
 CURRENT_RMS_TOKEN=<your RMS API token>
 CURRENT_RMS_SUBDOMAIN=limitless
 FORECAST_PASSPHRASE=<the shared passphrase that unlocks the dashboard>
+LASSO_API_TOKEN=<your Lasso API key — for the Truck Deliveries page>
 ```
 Repo access: grant the routine `LimitlessLightsandSound/prep-forecast` and enable
 **"Allow unrestricted branch pushes"** so it can push to `master`.
 
 ### Cloud-environment settings that are easy to get wrong (verified working)
-- **Network access = Custom**, with `api.current-rms.com` in the allowlist, AND
-  keep "include default package managers" checked. Trusted/None blocks the RMS
-  call with `403 Host not in allowlist`; Custom+RMS is the least-privilege fit.
+- **Network access = Custom**, with BOTH `api.current-rms.com` AND
+  `limitless.lasso.io` in the allowlist, AND keep "include default package
+  managers" checked. Trusted/None blocks the calls with `403 Host not in
+  allowlist`. (limitless.lasso.io is the Lasso Workforce API for the deliveries
+  page; api.current-rms.com is the RMS pull for the forecast.)
 - **Setup script = `pip install cryptography`** — NOT `pip install -r
   requirements.txt`. The setup script runs before the repo is checked out, so the
   requirements file isn't present yet; installing the package by name avoids the
@@ -33,15 +36,18 @@ Repo access: grant the routine `LimitlessLightsandSound/prep-forecast` and enabl
   the repo appears in the routine's repository picker.
 
 ### Routine prompt
-1. In the `prep-forecast` repo on branch `master`, install deps and run the build:
-   `pip install -r requirements.txt && python3 build_forecast.py`
-   (`CURRENT_RMS_TOKEN`, `CURRENT_RMS_SUBDOMAIN`, `FORECAST_PASSPHRASE` are already
-   in the environment.) With the passphrase set, `docs/forecast.json` is written
-   ENCRYPTED (AES-256-GCM) — safe to publish.
-2. Commit `docs/forecast.json` with message `forecast: <current UTC timestamp>`
-   and push to `master`. (The ciphertext changes every run by design — a random
-   salt/IV each time — so expect a commit on every run.)
-3. Do not modify any other file. The script is read-only against Current RMS.
+1. In the `prep-forecast` repo on branch `master`, install deps and run BOTH builds:
+   `pip install -r requirements.txt && python3 build_forecast.py && python3 build_deliveries.py`
+   (`CURRENT_RMS_TOKEN`, `CURRENT_RMS_SUBDOMAIN`, `FORECAST_PASSPHRASE`,
+   `LASSO_API_TOKEN` are already in the environment.) With the passphrase set,
+   both `docs/forecast.json` (from Current RMS) and `docs/deliveries.json` (from
+   the Lasso Workforce API) are written ENCRYPTED (AES-256-GCM) — safe to publish.
+2. Commit `docs/forecast.json` and `docs/deliveries.json` with message
+   `forecast: <current UTC timestamp>` and push to `master`. (The ciphertext
+   changes every run by design — a random salt/IV each time — so expect a commit
+   on every run.)
+3. Do not modify any other file. Both scripts are read-only against their APIs
+   (GET only, host-pinned); they never write to Current RMS or Lasso.
 
 GitHub Pages (PUBLIC repo, branch `master`, `/docs`) serves the dashboard at
 https://limitlesslightsandsound.github.io/prep-forecast/ and rebuilds on each

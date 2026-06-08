@@ -8,9 +8,12 @@ routine. Dashboard hosted free on GitHub Pages.
 ## Pieces
 | File | Role |
 |------|------|
-| `build_forecast.py` | The whole pipeline: RMS pull -> spread calc -> writes `docs/forecast.json` |
-| `docs/index.html` | The dashboard (dark theme). Reads `forecast.json` next to it |
-| `docs/forecast.json` | Output data, overwritten each run (sample committed so Pages renders day one) |
+| `build_forecast.py` | RMS pull -> spread calc -> writes `docs/forecast.json` |
+| `build_deliveries.py` | Lasso pull -> upcoming truck drives -> writes `docs/deliveries.json` |
+| `explore_lasso.py` | Read-only probe for poking at the Lasso API (dev tool) |
+| `docs/index.html` | Prep forecast dashboard (dark theme). Reads `forecast.json` |
+| `docs/deliveries.html` | Truck deliveries dashboard. Reads `deliveries.json` |
+| `docs/forecast.json` / `docs/deliveries.json` | Output data, overwritten each run (samples committed so Pages renders day one) |
 | `.claude/routine.md` | The every-3-hours Claude Code routine spec |
 
 ## Setup
