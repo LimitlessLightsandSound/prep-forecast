@@ -1,4 +1,4 @@
-# Limitless — Prep Workload Forecast
+# Limitless — Logistics
 
 Self-updating shop-labor dashboard. Pulls active opportunities from Current RMS,
 spreads each job's prep and de-prep labor across its scheduled days, and shows
@@ -11,8 +11,8 @@ routine. Dashboard hosted free on GitHub Pages.
 | `build_forecast.py` | RMS pull -> spread calc -> writes `docs/forecast.json` |
 | `build_deliveries.py` | Lasso pull -> upcoming truck drives -> writes `docs/deliveries.json` |
 | `explore_lasso.py` | Read-only probe for poking at the Lasso API (dev tool) |
-| `docs/index.html` | Prep forecast dashboard (dark theme). Reads `forecast.json` |
-| `docs/deliveries.html` | Truck deliveries dashboard. Reads `deliveries.json` |
+| `docs/index.html` | Logistics dashboard — Shop Floor + Shortages tabs. Reads `forecast.json` |
+| `docs/deliveries.html` | Truck Runs page (calendar + list, colour-by-vehicle). Reads `deliveries.json` |
 | `docs/forecast.json` / `docs/deliveries.json` | Output data, overwritten each run (samples committed so Pages renders day one) |
 | `.claude/routine.md` | The every-3-hours Claude Code routine spec |
 

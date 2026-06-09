@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Limitless — Truck Deliveries</title>
+<title>Limitless — Logistics · Truck Runs</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -101,6 +101,13 @@
     color:#06222a;font-weight:700;font-size:14px;cursor:pointer;font-family:'Inter'}
   .gate-card button:hover{filter:brightness(1.08)}
   .gate-err{color:#e88b8b;font-size:12.5px;margin-top:12px;min-height:16px}
+  .dref-h{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin-bottom:9px}
+  .drivers-ref{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px}
+  .dref{display:inline-flex;align-items:center;gap:9px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-size:13px}
+  .dref .nm{font-weight:700;color:var(--ink)}
+  .dref a{color:var(--cyan);text-decoration:none;font-weight:700;font-variant-numeric:tabular-nums}
+  .dref a:hover{filter:brightness(1.15)}
+  .dref .nophone{color:var(--faint);font-size:12px}
   .viewbar{display:inline-flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px;margin-bottom:22px}
   .vbtn{background:none;border:none;color:var(--muted);font-family:'Inter';font-size:12.5px;font-weight:700;padding:6px 18px;border-radius:7px;cursor:pointer}
   .vbtn.active{background:var(--panel-2);color:var(--cyan)}
@@ -146,8 +153,8 @@
 <div class="gate hidden" id="gate">
   <form class="gate-card" id="gateForm">
     <div class="eyebrow">Limitless Lights &amp; Sound</div>
-    <h2>Truck Deliveries</h2>
-    <p>Enter the shared passphrase to view the schedule.</p>
+    <h2>Logistics</h2>
+    <p>Enter the shared passphrase to view truck runs.</p>
     <input type="password" id="gatePass" placeholder="Passphrase" autocomplete="current-password">
     <button type="submit">Unlock</button>
     <div class="gate-err" id="gateErr"></div>
@@ -157,19 +164,21 @@
   <div class="head-row">
     <div>
       <div class="eyebrow">Limitless Lights &amp; Sound</div>
-      <h1>Truck <em>Deliveries</em></h1>
-      <div class="sub">Upcoming truck drives — drivers &amp; times, pulled from Lasso</div>
+      <h1>Limitless <em>Logistics</em></h1>
+      <div class="sub">Truck runs — vehicles, drivers &amp; times, pulled from Lasso</div>
     </div>
     <div class="updated">Data updated<b id="updated">loading…</b></div>
   </div>
 </header>
 <main>
   <nav class="tabs">
-    <a class="tab" href="index.html">Prep Forecast</a>
-    <a class="tab active" href="deliveries.html">Truck Deliveries</a>
+    <a class="tab" href="index.html">Shop Floor</a>
+    <a class="tab active" href="deliveries.html">Truck Runs</a>
+    <a class="tab" href="index.html#shortages">Shortages</a>
   </nav>
   <div id="status"></div>
   <div class="summary" id="summary"></div>
+  <div id="driversref"></div>
   <div class="viewbar">
     <button class="vbtn active" data-cv="cal">📅 Calendar</button>
     <button class="vbtn" data-cv="list">☰ List</button>
@@ -220,6 +229,18 @@
       '<div class="tile g"><div class="label">Days With Runs</div><div class="val">'+dayset.size+'</div></div>'+
       '<div class="tile a"><div class="label">Vehicles In Use</div><div class="val">'+vehSet.size+'</div></div>'+
       '<div class="tile r"><div class="label">Vehicles Unallocated</div><div class="val">'+unallocVeh+'</div>'+(unallocVeh?'<div class="meta">need a truck assigned</div>':'')+'</div>';
+
+    // Driver phone quick-reference (unique drivers in the window, tap to call)
+    const dref={};
+    drives.forEach(r=>(r.drivers||[]).forEach(x=>{ if(x.name && !(x.name in dref)) dref[x.name]=x.phone; }));
+    const drefChips=Object.keys(dref).sort().map(function(name){
+      const ph=dref[name];
+      const tel=ph ? '<a href="tel:'+esc(String(ph).replace(/[^0-9+]/g,''))+'">📞 '+esc(ph)+'</a>'
+                   : '<span class="nophone">no number</span>';
+      return '<span class="dref"><span class="nm">'+esc(name)+'</span>'+tel+'</span>';
+    }).join("");
+    document.getElementById("driversref").innerHTML = drefChips
+      ? '<div class="dref-h">Drivers — tap to call</div><div class="drivers-ref">'+drefChips+'</div>' : "";
 
     // Group by day, in date order
     const byDay = {};

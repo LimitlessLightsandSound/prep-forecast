@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Limitless — Prep Workload Forecast</title>
+<title>Limitless — Logistics</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -153,8 +153,8 @@
 <div class="gate hidden" id="gate">
   <form class="gate-card" id="gateForm">
     <div class="eyebrow">Limitless Lights &amp; Sound</div>
-    <h2>Prep Forecast</h2>
-    <p>Enter the shared passphrase to view the forecast.</p>
+    <h2>Logistics</h2>
+    <p>Enter the shared passphrase to view logistics.</p>
     <input type="password" id="gatePass" placeholder="Passphrase" autocomplete="current-password">
     <button type="submit">Unlock</button>
     <div class="gate-err" id="gateErr"></div>
@@ -164,8 +164,8 @@
   <div class="head-row">
     <div>
       <div class="eyebrow">Limitless Lights &amp; Sound</div>
-      <h1>Prep Workload <em>Forecast</em></h1>
-      <div class="sub">Shop labor by day — prep &amp; de-prep, spread across scheduled days</div>
+      <h1>Limitless <em>Logistics</em></h1>
+      <div class="sub">Shop floor labour, truck runs &amp; shortages — refreshed automatically</div>
     </div>
     <div class="updated">Data updated<b id="updated">loading…</b></div>
   </div>
@@ -173,9 +173,9 @@
 <main>
   <div id="status"></div>
   <nav class="tabs">
-    <button class="tab active" data-view="main">Forecast</button>
-    <button class="tab" data-view="detail">Logistics Detail</button>
-    <a class="tab" href="deliveries.html" style="margin-left:auto">Truck Deliveries →</a>
+    <button class="tab active" data-view="main">Shop Floor</button>
+    <a class="tab" href="deliveries.html">Truck Runs</a>
+    <button class="tab" data-view="detail">Shortages</button>
   </nav>
 
   <section id="view-main">
@@ -356,16 +356,18 @@
     tryUnlock(document.getElementById("gatePass").value, false);
   });
 
-  // Tab switching (Forecast / Logistics Detail)
-  document.querySelectorAll(".tab").forEach(function(b){
-    b.addEventListener("click", function(){
-      document.querySelectorAll(".tab").forEach(function(x){ x.classList.remove("active"); });
-      b.classList.add("active");
-      const v = b.getAttribute("data-view");
-      document.getElementById("view-main").style.display   = (v==="main")   ? "" : "none";
-      document.getElementById("view-detail").style.display = (v==="detail") ? "" : "none";
-    });
+  // Tab switching (Shop Floor / Shortages)
+  function showView(v){
+    document.querySelectorAll(".tab").forEach(function(x){ x.classList.remove("active"); });
+    const btn=document.querySelector('.tab[data-view="'+v+'"]'); if(btn) btn.classList.add("active");
+    document.getElementById("view-main").style.display   = (v==="main")   ? "" : "none";
+    document.getElementById("view-detail").style.display = (v==="detail") ? "" : "none";
+  }
+  document.querySelectorAll(".tab[data-view]").forEach(function(b){
+    b.addEventListener("click", function(){ showView(b.getAttribute("data-view")); });
   });
+  // Deep-link from the Truck Runs page: index.html#shortages opens the Shortages view.
+  if(location.hash === "#shortages") showView("detail");
 
   fetch(DATA_URL + "?t=" + Date.now())   // cache-bust so the 3-hour refresh shows
     .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
