@@ -131,6 +131,7 @@
   .short-item::before{content:"•";position:absolute;left:3px;color:var(--faint)}
   .short-item.more{color:var(--faint);font-style:italic}
   .short-item.more::before{content:""}
+  .short-item .sq{color:var(--amber);font-weight:700;font-variant-numeric:tabular-nums;margin-left:4px}
   .gate{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
     background:rgba(8,10,14,.93);backdrop-filter:blur(5px)}
   .gate.hidden{display:none}
@@ -314,7 +315,11 @@
         shorts.map(function(s){
           const shown=(s.items||[]);
           const extra=s.count-shown.length;
-          const list=shown.map(function(it){ return '<div class="short-item">'+esc(it)+'</div>'; }).join('')
+          const list=shown.map(function(it){
+              const nm=(it&&it.name!=null)?it.name:it;            // back-compat if string
+              const q=(it&&it.qty)?' <span class="sq">×'+(+it.qty)+'</span>':'';
+              return '<div class="short-item">'+esc(nm)+q+'</div>';
+            }).join('')
                     +(extra>0?'<div class="short-item more">+ '+extra+' more…</div>':'');
           return '<div class="short-block"><div class="short-job">'+joblink(s.id,s.name)+' <span class="logi-cnt">'+s.count+' short</span></div><div class="short-items">'+list+'</div></div>';
         }).join('');

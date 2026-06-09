@@ -336,7 +336,8 @@ def main():
             shortages.append({
                 "id": oid, "name": name, "out_date": od.isoformat(),
                 "count": len(short_lines),
-                "items": [it.get("name") for it in short_lines[:8]],
+                "items": [{"name": it.get("name"), "qty": num(it.get("quantity"))}
+                          for it in short_lines[:8]],
             })
         if any(it.get("sub_rent") for it in items):
             nested = get_all(f"/opportunities/{oid}/opportunity_items",
