@@ -47,8 +47,13 @@ OUT       = os.path.join(os.path.dirname(__file__), "docs", "forecast.json")
 # collect_*(56); load_*/unload_* are unused(0); starts_at/ends_at always present.
 PREP_START_KEYS  = ["prep_starts_at", "setup_starts_at", "deliver_starts_at", "starts_at"]
 OUT_KEYS         = ["deliver_starts_at", "setup_starts_at", "show_starts_at", "starts_at"]
-RETURN_START_KEYS= ["deprep_starts_at", "collect_starts_at", "collect_ends_at", "ends_at"]
-RETURN_END_KEYS  = ["deprep_ends_at", "collect_ends_at", "ends_at"]
+# De-prep labor follows the DE-PREP WINDOW set in Current RMS — deliberately NOT
+# the truck collection/return time. RMS stores collection at the venue, not when
+# the gear is back at the shop, so collect/ends_at would land de-prep on the wrong
+# day for late returns. The shop controls timing by setting the de-prep window in
+# Current; an opp with no de-prep window simply shows no de-prep labor here.
+RETURN_START_KEYS= ["deprep_starts_at"]
+RETURN_END_KEYS  = ["deprep_ends_at"]
 
 # --- Safety guardrails: read-only by construction ---
 # This tool must NEVER modify Current RMS. It issues HTTPS GET requests only, and
@@ -199,6 +204,8 @@ def main():
     # Account manager per opp (RMS "owner" = assigned user) so shop techs know
     # who to ask about a job.
     managers = {}
+    # Shows with de-prep labor due back in-window but no de-prep window set in RMS.
+    missing_deprep = []
 
     for opp in opps:
         oid  = opp.get("id")
@@ -233,6 +240,18 @@ def main():
         else:
             prep_days = []
         deprep_days = days_span(first_key(opp, RETURN_START_KEYS), first_key(opp, RETURN_END_KEYS))
+
+        # Has de-prep labor but no de-prep window set in Current, yet gear is due
+        # back within the window — flag it so the shop sets the window (instead of
+        # the de-prep labor silently going missing from the staffing picture).
+        if deprep_total > 0 and not deprep_days:
+            back = date_only(parse_dt(first_key(opp, ["collect_starts_at", "collect_ends_at", "ends_at"])))
+            if back and today <= back <= horizon:
+                missing_deprep.append({
+                    "id": oid, "name": name, "manager": managers.get(oid),
+                    "back_date": back.isoformat(),
+                    "hours": round(deprep_total / 60, 1),
+                })
 
         if prep_days:
             per = prep_total / len(prep_days)
@@ -392,6 +411,7 @@ def main():
         "rms_base": f"https://{SUBDOMAIN}.current-rms.com",  # opp link = rms_base/opportunities/<id>
         "days": rows,
         "risk": risk,
+        "missing_deprep": sorted(missing_deprep, key=lambda m: m["back_date"]),
         "sub_rentals": sub_rentals,
         "shortages": shortages,
     }

@@ -85,6 +85,11 @@
   .status.empty{background:var(--cyan-dim);border-color:rgba(63,199,212,.3);color:var(--cyan)}
   .risk-panel{background:linear-gradient(180deg,rgba(232,168,56,.10),rgba(232,168,56,.03));
     border:1px solid rgba(232,168,56,.42);border-radius:14px;padding:16px 20px;margin-bottom:30px}
+  .risk-panel.nw{background:linear-gradient(180deg,rgba(63,199,212,.10),rgba(63,199,212,.03));border-color:rgba(63,199,212,.42)}
+  .risk-panel.nw .risk-head{color:var(--cyan)}
+  .risk-panel.nw .risk-count{background:var(--cyan);color:#06222a}
+  .risk-panel.nw .risk-row{border-top-color:rgba(63,199,212,.18)}
+  .risk-panel.nw .risk-date{color:var(--cyan)}
   .risk-head{font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:var(--amber);
     display:flex;align-items:center;gap:10px}
   .risk-count{background:var(--amber);color:#2a1d05;font-family:'Inter';font-size:12px;font-weight:800;
@@ -186,6 +191,7 @@
   </nav>
 
   <section id="view-main">
+    <div id="nowindow"></div>
     <div id="risk"></div>
     <div class="sec"><span class="tick"></span>Daily Breakdown</div>
     <div class="days" id="days"></div>
@@ -297,6 +303,29 @@
     } else {
       rb.innerHTML = "";
     }
+
+    // --- De-prep window not set: gear due back in-window, de-prep labor exists,
+    // but no de-prep window in Current RMS (so it'd otherwise be missing here) ---
+    const noWin = payload.missing_deprep || [];
+    const nw = document.getElementById("nowindow");
+    if(noWin.length){
+      const items = noWin.map(function(m){
+        const link = (m.id && rmsBase) ? rmsBase+'/opportunities/'+encodeURIComponent(m.id)+'?view=d' : null;
+        const nm = link ? '<a href="'+link+'" target="_blank" rel="noopener">'+esc(m.name)+'</a>' : esc(m.name);
+        const b = fd(m.back_date);
+        return '<div class="risk-row">'+
+          '<span class="risk-date">Back '+b.dow+' '+b.mon+' '+b.dnum+'</span>'+
+          '<span class="risk-name">'+nm+'</span>'+
+          '<span class="risk-meta">'+h(m.hours)+'h de-prep'+(m.manager?' · AM: '+esc(m.manager):'')+'</span>'+
+        '</div>';
+      }).join("");
+      nw.innerHTML =
+        '<div class="risk-panel nw">'+
+          '<div class="risk-head">⚠ De-prep window not set <span class="risk-count">'+noWin.length+'</span></div>'+
+          '<div class="risk-sub">Gear due back in the next '+(payload.horizon_days||14)+' days with de-prep labor, but no de-prep window set in Current RMS — set the window so the labor lands on the right day.</div>'+
+          items+
+        '</div>';
+    } else { nw.innerHTML = ""; }
 
     // --- Logistics Detail tab: item-level sub-rentals + full shortage lists ---
     const subs = payload.sub_rentals || [];
