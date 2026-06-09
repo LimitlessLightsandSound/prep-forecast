@@ -54,8 +54,14 @@
   .d-date .dnum{font-family:'Playfair Display',serif;font-weight:700;font-size:23px;color:#fff;margin-top:3px}
   .d-date .cnt{font-size:11px;color:var(--faint);margin-top:6px}
   .d-runs{display:flex;flex-direction:column}
-  .run{display:grid;grid-template-columns:128px 1fr 1.1fr 1fr;gap:14px;align-items:center;
+  .run{display:grid;grid-template-columns:120px 1fr 1fr 1.5fr;gap:14px;align-items:center;
     padding:13px 20px;border-bottom:1px solid var(--line)}
+  .r-assign{display:flex;flex-direction:column;gap:7px;align-items:flex-start}
+  .veh{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;letter-spacing:.3px;
+    padding:3px 9px;border-radius:7px;border:1px solid;white-space:nowrap}
+  .veh.noveh{color:#e88b8b;background:rgba(214,90,90,.12);border-color:rgba(214,90,90,.45)}
+  .driver .tel{color:inherit;text-decoration:none;border-bottom:1px dotted currentColor;margin-left:6px;font-weight:700}
+  .driver .tel:hover{filter:brightness(1.15)}
   .run:last-child{border-bottom:none}
   .run:hover{background:var(--panel-2)}
   .r-time{display:flex;flex-direction:column;gap:3px}
@@ -117,6 +123,7 @@
   .cal-block{position:absolute;border-radius:7px;padding:3px 6px;overflow:hidden;border:1px solid;cursor:pointer;text-decoration:none;display:block}
   .cal-block .bt{font-size:10px;font-weight:800;font-variant-numeric:tabular-nums}
   .cal-block .bn{font-size:10.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+  .cal-block .bv{font-size:9.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .cal-block .bd{font-size:9.5px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .cal-block:hover{filter:brightness(1.18);z-index:5;box-shadow:0 4px 14px rgba(0,0,0,.4)}
   .cal-legend{display:flex;flex-wrap:wrap;gap:12px;margin:14px 2px 0;font-size:11.5px;color:var(--muted)}
@@ -177,10 +184,10 @@
     <div class="days" id="days"></div>
   </section>
   <div class="note">
-    <b>Reading it:</b> each row is one scheduled driver shift on a job — its time block, the event, the
-    destination, and who's assigned. <span class="driver" style="padding:1px 8px"><span class="dot"></span>Green</span>
-    means the driver is approved; <span class="driver tent" style="padding:1px 8px"><span class="dot"></span>amber</span>
-    means tentative; <span class="unassigned" style="padding:1px 8px">No driver</span> means the run needs someone.
+    <b>Reading it:</b> each block is one truck run — time, event, vehicle, and driver.
+    <b>Colour = vehicle</b>, so you can trace a truck's day and spot two runs on the same truck overlapping.
+    <span class="veh noveh" style="padding:1px 8px">⚠ No vehicle</span> (red) means a run with no truck allocated yet.
+    Tap a driver's <b>📞 number</b> to call. Click any run to open the event's crew page in Lasso.
   </div>
 </main>
 <script>
@@ -206,32 +213,37 @@
 
     // Summary
     const dayset = new Set(drives.map(d=>d.date));
-    const driverSet = new Set();
-    let unassigned = 0;
-    drives.forEach(d=>{ (d.drivers||[]).forEach(x=>driverSet.add(x.name));
-                        if(!(d.drivers||[]).length) unassigned++; });
+    const vehSet = new Set(); let unallocVeh = 0;
+    drives.forEach(d=>{ if(d.vehicle && !d.vehicle_unallocated) vehSet.add(d.vehicle); else unallocVeh++; });
     document.getElementById("summary").innerHTML=
       '<div class="tile c"><div class="label">Drives Scheduled</div><div class="val">'+drives.length+'</div><div class="meta">next '+(payload.horizon_days||14)+' days</div></div>'+
       '<div class="tile g"><div class="label">Days With Runs</div><div class="val">'+dayset.size+'</div></div>'+
-      '<div class="tile a"><div class="label">Drivers On Rotation</div><div class="val">'+driverSet.size+'</div></div>'+
-      '<div class="tile r"><div class="label">Unassigned Runs</div><div class="val">'+unassigned+'</div>'+(unassigned?'<div class="meta">need a driver</div>':'')+'</div>';
+      '<div class="tile a"><div class="label">Vehicles In Use</div><div class="val">'+vehSet.size+'</div></div>'+
+      '<div class="tile r"><div class="label">Vehicles Unallocated</div><div class="val">'+unallocVeh+'</div>'+(unallocVeh?'<div class="meta">need a truck assigned</div>':'')+'</div>';
 
     // Group by day, in date order
     const byDay = {};
     drives.forEach(d=>{ (byDay[d.date]=byDay[d.date]||[]).push(d); });
     const dates = Object.keys(byDay).sort();
+    const vmap = vehColorMap(drives);   // shared vehicle->colour so list matches calendar
 
     document.getElementById("days").innerHTML = dates.map(function(date){
       const dt=fd(date);
       const runs = byDay[date].map(function(r){
         const time = (r.start||"")+(r.end?'<span style="color:var(--faint)"> – </span>'+r.end:"");
-        const drivers = (r.drivers||[]).length
-          ? '<div class="drivers">'+r.drivers.map(function(x){
+        const driverChips = (r.drivers||[]).length
+          ? r.drivers.map(function(x){
               const tent = x.status!=="approved";
+              const ph = x.phone ? '<a class="tel" href="tel:'+esc(String(x.phone).replace(/[^0-9+]/g,''))+'">📞 '+esc(x.phone)+'</a>' : '';
               return '<span class="driver'+(tent?' tent':'')+'"><span class="dot"></span>'+esc(x.name)+
-                     (tent?'<span class="ds">'+esc(x.status||"")+'</span>':'')+'</span>';
-            }).join('')+'</div>'
+                     (tent?'<span class="ds">'+esc(x.status||"")+'</span>':'')+ph+'</span>';
+            }).join('')
           : '<span class="unassigned">No driver</span>';
+        const vc = colorFor(r, vmap);
+        const vehPill = (r.vehicle && !r.vehicle_unallocated)
+          ? '<span class="veh" style="background:'+vc[1]+';border-color:'+vc[0]+';color:'+vc[0]+'">🚚 '+esc(r.vehicle)+'</span>'
+          : '<span class="veh noveh">⚠ No vehicle</span>';
+        const assign = '<div class="r-assign">'+vehPill+'<div class="drivers">'+driverChips+'</div></div>';
         const enInner = r.event_url
           ? '<a class="en elink" href="'+esc(r.event_url)+'" target="_blank" rel="noopener">'+esc(r.event_name)+'</a>'
           : '<div class="en">'+esc(r.event_name)+'</div>';
@@ -246,7 +258,7 @@
           '<div class="r-time">'+tt+'<span class="t">'+time+'</span></div>'+
           '<div class="r-event">'+ev+'</div>'+
           '<div class="r-dest">'+dest+'</div>'+
-          drivers+
+          assign+
         '</div>';
       }).join("");
       return '<div class="day"><div class="d-date"><span class="dow">'+dt.dow+'</span>'+
@@ -260,10 +272,16 @@
 
   // --- Calendar (week time-grid): days as columns, time-of-day vertical, so
   // concurrent drives sit side-by-side and time overlaps are visible at a glance.
+  // Six distinct, non-red colours (one per vehicle); red is reserved for "not allocated".
   const PAL=[['#3fc7d4','rgba(63,199,212,.18)'],['#9b8cff','rgba(155,140,255,.18)'],
              ['#4bbf87','rgba(75,191,135,.18)'],['#e8a838','rgba(232,168,56,.18)'],
-             ['#e87fb0','rgba(232,127,176,.18)'],['#7fb0e8','rgba(127,176,232,.18)']];
-  const UNASSIGNED=['#e88b8b','rgba(214,90,90,.16)'];
+             ['#5b8def','rgba(91,141,239,.18)'],['#d07de8','rgba(208,125,232,.18)']];
+  const UNALLOC=['#e88b8b','rgba(214,90,90,.18)'];
+  // Stable vehicle -> colour (first-seen order; drives are pre-sorted so it's deterministic).
+  function vehColorMap(drives){ const m={}; let i=0;
+    drives.forEach(r=>{ if(r.vehicle && !r.vehicle_unallocated && !(r.vehicle in m)){ m[r.vehicle]=PAL[i%PAL.length]; i++; } });
+    return m; }
+  function colorFor(r,m){ return (r.vehicle && !r.vehicle_unallocated) ? (m[r.vehicle]||PAL[0]) : UNALLOC; }
   function buildCalendar(drives, payload){
     const cal=document.getElementById("cal"), leg=document.getElementById("callegend");
     if(!drives.length){ cal.innerHTML=""; leg.innerHTML=""; return; }
@@ -284,10 +302,9 @@
       list.forEach(b=>{ let ln=ends.findIndex(x=>x<=b.s+1e-6);
         if(ln<0){ln=ends.length;ends.push(b.e);} else ends[ln]=b.e; b.lane=ln; });
       const n=ends.length||1; list.forEach(b=>b.lanes=n); });
-    // stable driver -> colour
-    const colorOf={}; let ci=0;
-    const dcolor=r=>{ if(!(r.drivers||[]).length) return UNASSIGNED;
-      const k=r.drivers[0].name; if(!(k in colorOf)){ colorOf[k]=PAL[ci%PAL.length]; ci++; } return colorOf[k]; };
+    // colour by VEHICLE; a run with no vehicle allocated shows red
+    const colorOf=vehColorMap(drives);
+    const dcolor=r=>colorFor(r,colorOf);
     const grid="repeating-linear-gradient(to bottom,rgba(39,44,56,.55) 0,rgba(39,44,56,.55) 1px,transparent 1px,transparent "+HP+"px)";
     function axis(){ let h=""; for(let hr=minH;hr<=maxH;hr++){ let l=hr%24,ap=l<12?"a":"p",hh=l%12||12;
       h+='<span class="hr" style="top:'+((hr-minH)*HP)+'px">'+hh+ap+'</span>'; } return h; }
@@ -304,12 +321,15 @@
           const blocks=(byDay[dt]||[]).map(b=>{
             const c=dcolor(b), top=(b.s-minH)*HP, hgt=Math.max(26,(b.e-b.s)*HP), wd=100/b.lanes, lf=b.lane*wd;
             const names=(b.drivers||[]).map(x=>x.name.split(" ")[0]).join(", ")||"No driver";
+            const veh=(b.vehicle_unallocated||!b.vehicle) ? "⚠ No vehicle" : b.vehicle;
             const inner='<div class="bt" style="color:'+c[0]+'">'+esc(b.start)+'</div>'+
                         '<div class="bn">'+esc(b.event_name||b.event_code||"")+'</div>'+
+                        '<div class="bv" style="color:'+c[0]+'">'+esc(veh)+'</div>'+
                         '<div class="bd">'+esc(names)+'</div>';
             const style='top:'+top+'px;height:'+(hgt-2)+'px;left:calc('+lf+'% + 2px);width:calc('+wd+'% - 4px);'+
                         'background:'+c[1]+';border-color:'+c[0]+';color:var(--ink)';
-            const title=esc((b.start||"")+"–"+(b.end||"")+"  "+(b.event_name||"")+"  ["+names+"]");
+            const phones=(b.drivers||[]).map(x=>x.name+(x.phone?" "+x.phone:"")).join(", ")||"No driver";
+            const title=esc((b.start||"")+"–"+(b.end||"")+" · "+veh+" · "+(b.event_name||"")+" · "+phones);
             return b.event_url
               ? '<a class="cal-block" style="'+style+'" href="'+esc(b.event_url)+'" target="_blank" rel="noopener" title="'+title+'">'+inner+'</a>'
               : '<div class="cal-block" style="'+style+'" title="'+title+'">'+inner+'</div>';
@@ -324,8 +344,8 @@
     // legend: colour per driver + unassigned (only if any)
     let lg=Object.keys(colorOf).map(name=>{ const c=colorOf[name];
       return '<span class="lg"><span class="sw" style="background:'+c[1]+';border-color:'+c[0]+'"></span>'+esc(name)+'</span>'; }).join("");
-    if(drives.some(r=>!(r.drivers||[]).length))
-      lg+='<span class="lg"><span class="sw" style="background:'+UNASSIGNED[1]+';border-color:'+UNASSIGNED[0]+'"></span>No driver</span>';
+    if(drives.some(r=>r.vehicle_unallocated||!r.vehicle))
+      lg+='<span class="lg"><span class="sw" style="background:'+UNALLOC[1]+';border-color:'+UNALLOC[0]+'"></span>Vehicle not allocated</span>';
     leg.innerHTML=lg;
   }
 

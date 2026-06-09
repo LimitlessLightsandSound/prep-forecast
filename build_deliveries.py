@@ -32,6 +32,10 @@ TOKEN     = os.environ.get("LASSO_API_TOKEN", "")
 BASE      = os.environ.get("LASSO_API_BASE", "https://limitless.lasso.io/api/v1").rstrip("/")
 DAYS      = int(os.environ.get("DELIVERIES_DAYS", "14"))
 TRUCK_IDS = {int(x) for x in os.environ.get("TRUCK_POSITION_IDS", "31888,31992").split(",") if x.strip()}
+# A "Vehicle" is its own position (37623) rostered with a crew record that stands
+# in for the truck. A drive's vehicle = the crew on the Vehicle position sharing
+# the SAME group as the Truck Driver position on that event.
+VEHICLE_ID = int(os.environ.get("VEHICLE_POSITION_ID", "37623"))
 PASSPHRASE   = os.environ.get("FORECAST_PASSPHRASE", "")
 PBKDF2_ITERS = 200_000
 OUT = os.path.join(os.path.dirname(__file__), "docs", "deliveries.json")
@@ -96,8 +100,12 @@ def main():
     end   = today + dt.timedelta(days=DAYS - 1)
     today_s, end_s = today.isoformat(), end.isoformat()
 
-    # 1) Driver event_positions (schedule_entries ride along inline).
-    driver_eps = [ep for ep in pages("/event_positions") if ep.get("position") in TRUCK_IDS]
+    # 1) All event_positions once: driver slots (the drives) + vehicle slots,
+    #    keyed by (event, group) so a driver's run resolves to its vehicle.
+    all_eps = list(pages("/event_positions"))
+    driver_eps = [ep for ep in all_eps if ep.get("position") in TRUCK_IDS]
+    vehicle_ep_by_group = {(ep.get("event"), ep.get("group")): ep.get("id")
+                           for ep in all_eps if ep.get("position") == VEHICLE_ID}
 
     # 2) Roster: event_position -> assigned crew (drop 'removed' swaps).
     roster = defaultdict(list)
@@ -126,6 +134,15 @@ def main():
         if vid and vid not in venues:
             venues[vid] = get(f"/venues/{vid}")
 
+    def vehicle_for(ep):
+        """Crew name on the Vehicle position sharing this driver run's group."""
+        vep = vehicle_ep_by_group.get((ep.get("event"), ep.get("group")))
+        for r in roster.get(vep, []):
+            nm = crew.get(r.get("crew"), {}).get("name")
+            if nm:
+                return nm
+        return None
+
     rows = []
     for it in drives:
         ep, se = it["ep"], it["se"]
@@ -136,7 +153,10 @@ def main():
                     "status": r.get("status")}
                    for r in roster.get(ep.get("id"), [])]
         drivers.sort(key=lambda x: (x["status"] != "approved", x["name"]))
+        vehicle = vehicle_for(ep)
         rows.append({
+            "vehicle": vehicle,
+            "vehicle_unallocated": vehicle is None,
             "date": se.get("date"),
             "start": (se.get("start_time") or "")[:5],
             "end": (se.get("end_time") or "")[:5],
