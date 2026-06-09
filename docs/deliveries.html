@@ -31,7 +31,7 @@
   .updated b{color:var(--cyan);font-weight:600;display:block;margin-top:2px;font-size:13px}
   main{max-width:1240px;margin:0 auto;padding:30px 36px 70px}
   .tabs{display:flex;margin-bottom:24px;border-bottom:1px solid var(--line)}
-  .tab{background:none;border:none;color:var(--muted);font-family:'Inter';font-size:13px;font-weight:600;
+  .tab{background:none;border:none;color:var(--muted);font-family:'Inter';font-size:15px;font-weight:600;
     padding:9px 4px;margin-right:22px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;text-decoration:none}
   .tab:hover{color:var(--ink)} .tab.active{color:var(--cyan);border-bottom-color:var(--cyan)}
   .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:34px}
@@ -116,7 +116,7 @@
   .elink:hover{color:var(--cyan);border-bottom-color:var(--cyan)}
   .cal-week{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px}
   .cal-wk-label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--faint);font-weight:700;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--panel-2)}
-  .cal-grid{display:grid;grid-template-columns:50px repeat(7,1fr)}
+  .cal-grid{display:grid;grid-template-columns:58px repeat(7,1fr)}
   .cal-corner{border-bottom:1px solid var(--line);border-right:1px solid var(--line)}
   .cal-dh{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:8px 4px;text-align:center}
   .cal-dh:last-child{border-right:none}
@@ -124,11 +124,11 @@
   .cal-dh .dn{font-size:13px;color:#fff;font-weight:700;font-family:'Playfair Display',serif}
   .cal-dh.empty,.cal-body.empty{background:repeating-linear-gradient(45deg,transparent,transparent 6px,rgba(255,255,255,.014) 6px,rgba(255,255,255,.014) 12px)}
   .cal-axis{position:relative;border-right:1px solid var(--line)}
-  .cal-axis .hr{position:absolute;right:5px;font-size:9px;color:var(--faint);transform:translateY(-50%);font-variant-numeric:tabular-nums}
+  .cal-axis .hr{position:absolute;right:6px;font-size:11.5px;color:var(--muted);font-weight:600;transform:translateY(-50%);font-variant-numeric:tabular-nums}
   .cal-body{position:relative;border-right:1px solid var(--line)}
   .cal-body:last-child{border-right:none}
   .cal-block{position:absolute;border-radius:7px;padding:3px 6px;overflow:hidden;border:1px solid;cursor:pointer;text-decoration:none;display:block}
-  .cal-block .bt{font-size:10px;font-weight:800;font-variant-numeric:tabular-nums}
+  .cal-block .bt{font-size:11.5px;font-weight:800;font-variant-numeric:tabular-nums}
   .cal-block .bn{font-size:10.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
   .cal-block .bv{font-size:9.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .cal-block .bd{font-size:9.5px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -137,7 +137,7 @@
   .cal-legend .lg{display:inline-flex;align-items:center;gap:6px}
   .cal-legend .sw{width:11px;height:11px;border-radius:3px;border:1px solid}
   @media(max-width:760px){
-    .cal-grid{grid-template-columns:34px repeat(7,1fr)}
+    .cal-grid{grid-template-columns:42px repeat(7,1fr)}
     .cal-block{font-size:8px;padding:2px 3px}
     .cal-block .bn,.cal-block .bd{font-size:8px}
     .summary{grid-template-columns:repeat(2,1fr)}
@@ -197,6 +197,7 @@
     <b>Colour = vehicle</b>, so you can trace a truck's day and spot two runs on the same truck overlapping.
     <span class="veh noveh" style="padding:1px 8px">⚠ No vehicle</span> (red) means a run with no truck allocated yet.
     Tap a driver's <b>📞 number</b> to call. Click any run to open the event's crew page in Lasso.
+    All times <b>Central (CT)</b>; overnight runs wrap past midnight into the next day's column.
   </div>
 </main>
 <script>
@@ -204,6 +205,10 @@
   const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   const DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
   function fd(s){const d=new Date(s+"T00:00:00");return{dow:DOW[d.getDay()],dnum:d.getDate(),mon:MON[d.getMonth()]};}
+  // Times from Lasso schedule entries are already event-local (Central for all TX
+  // venues). Render them in US 12-hour AM/PM. "23:59" -> "11:59 PM", "00:30" -> "12:30 AM".
+  function fmtAMPM(hhmm){ if(!hhmm) return ""; const p=String(hhmm).split(":"); let h=+p[0]; const m=p[1]||"00";
+    const ap=h<12?"AM":"PM"; let hh=h%12; if(hh===0) hh=12; return hh+":"+m+" "+ap; }
   const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>(
     {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
 
@@ -212,7 +217,8 @@
     if(payload.generated_at){
       document.getElementById("updated").textContent =
         new Date(payload.generated_at).toLocaleString('en-US',
-          {weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+          {weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',
+           hour12:true,timeZone:'America/Chicago',timeZoneName:'short'});
     }
     if(!drives.length){
       document.getElementById("status").innerHTML=
@@ -251,7 +257,7 @@
     document.getElementById("days").innerHTML = dates.map(function(date){
       const dt=fd(date);
       const runs = byDay[date].map(function(r){
-        const time = (r.start||"")+(r.end?'<span style="color:var(--faint)"> – </span>'+r.end:"");
+        const time = fmtAMPM(r.start)+(r.end?'<span style="color:var(--faint)"> – </span>'+fmtAMPM(r.end):"");
         const driverChips = (r.drivers||[]).length
           ? r.drivers.map(function(x){
               const tent = x.status!=="approved";
@@ -312,10 +318,18 @@
     while(d<=e){ const y=d.getFullYear(),m=("0"+(d.getMonth()+1)).slice(-2),da=("0"+d.getDate()).slice(-2);
       days.push(y+"-"+m+"-"+da); d.setDate(d.getDate()+1); }
     const byDay={}; days.forEach(x=>byDay[x]=[]);
+    const nextDay=date=>{ const d=new Date(date+"T00:00:00"); d.setDate(d.getDate()+1);
+      return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); };
     let minH=24,maxH=0;
-    drives.forEach(r=>{ if(!(r.date in byDay)) return; let s=toH(r.start),en=toH(r.end);
-      if(s==null) return; if(en==null||en<=s) en=Math.min(24,s+1.5);   // missing/over-midnight -> short block
-      minH=Math.min(minH,s); maxH=Math.max(maxH,en); byDay[r.date].push(Object.assign({},r,{s:s,e:en})); });
+    const addSeg=(date,s,e,r)=>{ if(!(date in byDay)) return;
+      minH=Math.min(minH,s); maxH=Math.max(maxH,e); byDay[date].push(Object.assign({},r,{s:s,e:e})); };
+    drives.forEach(r=>{ let s=toH(r.start), en=toH(r.end);
+      if(s==null) return;
+      if(en==null){ addSeg(r.date,s,Math.min(24,s+1.5),r); }            // no end -> short block
+      else if(en<=s){ addSeg(r.date,s,24,r); addSeg(nextDay(r.date),0,en,r); }  // crosses midnight -> split across two days
+      else { addSeg(r.date,s,en,r); }
+    });
+    if(minH>maxH){ minH=6; maxH=20; }
     minH=Math.floor(minH); maxH=Math.ceil(maxH); if(minH>=maxH){minH=6;maxH=20;}
     const HP=46, bodyH=(maxH-minH)*HP;
     // greedy lane assignment within each day so overlapping drives split the width
@@ -343,14 +357,14 @@
             const c=dcolor(b), top=(b.s-minH)*HP, hgt=Math.max(26,(b.e-b.s)*HP), wd=100/b.lanes, lf=b.lane*wd;
             const names=(b.drivers||[]).map(x=>x.name.split(" ")[0]).join(", ")||"No driver";
             const veh=(b.vehicle_unallocated||!b.vehicle) ? "⚠ No vehicle" : b.vehicle;
-            const inner='<div class="bt" style="color:'+c[0]+'">'+esc(b.start)+'</div>'+
+            const inner='<div class="bt" style="color:'+c[0]+'">'+esc(fmtAMPM(b.start))+'</div>'+
                         '<div class="bn">'+esc(b.event_name||b.event_code||"")+'</div>'+
                         '<div class="bv" style="color:'+c[0]+'">'+esc(veh)+'</div>'+
                         '<div class="bd">'+esc(names)+'</div>';
             const style='top:'+top+'px;height:'+(hgt-2)+'px;left:calc('+lf+'% + 2px);width:calc('+wd+'% - 4px);'+
                         'background:'+c[1]+';border-color:'+c[0]+';color:var(--ink)';
             const phones=(b.drivers||[]).map(x=>x.name+(x.phone?" "+x.phone:"")).join(", ")||"No driver";
-            const title=esc((b.start||"")+"–"+(b.end||"")+" · "+veh+" · "+(b.event_name||"")+" · "+phones);
+            const title=esc(fmtAMPM(b.start)+"–"+fmtAMPM(b.end)+" · "+veh+" · "+(b.event_name||"")+" · "+phones);
             return b.event_url
               ? '<a class="cal-block" style="'+style+'" href="'+esc(b.event_url)+'" target="_blank" rel="noopener" title="'+title+'">'+inner+'</a>'
               : '<div class="cal-block" style="'+style+'" title="'+title+'">'+inner+'</div>';
