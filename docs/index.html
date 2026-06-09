@@ -125,7 +125,12 @@
   .dtable .dt-job a:hover{color:var(--cyan);border-bottom-color:var(--cyan)}
   .short-block{padding:9px 0;border-bottom:1px solid var(--line)}
   .short-job a{color:var(--ink);text-decoration:none;border-bottom:1px dotted var(--faint)}
-  .short-job a:hover{color:var(--cyan)} .short-items{font-size:12px;color:var(--faint);margin-top:3px}
+  .short-job a:hover{color:var(--cyan)}
+  .short-items{font-size:12.5px;color:var(--muted);margin-top:6px;display:flex;flex-direction:column;gap:3px}
+  .short-item{padding-left:15px;position:relative}
+  .short-item::before{content:"•";position:absolute;left:3px;color:var(--faint)}
+  .short-item.more{color:var(--faint);font-style:italic}
+  .short-item.more::before{content:""}
   .gate{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
     background:rgba(8,10,14,.93);backdrop-filter:blur(5px)}
   .gate.hidden{display:none}
@@ -307,8 +312,11 @@
     if(shorts.length){
       dh += '<div class="sec"><span class="tick"></span>Shortages</div>'+
         shorts.map(function(s){
-          const items=(s.items||[]).join(', ')+(s.count>(s.items||[]).length?', …':'');
-          return '<div class="short-block"><div class="short-job">'+joblink(s.id,s.name)+' <span class="logi-cnt">'+s.count+' short</span></div><div class="short-items">'+esc(items)+'</div></div>';
+          const shown=(s.items||[]);
+          const extra=s.count-shown.length;
+          const list=shown.map(function(it){ return '<div class="short-item">'+esc(it)+'</div>'; }).join('')
+                    +(extra>0?'<div class="short-item more">+ '+extra+' more…</div>':'');
+          return '<div class="short-block"><div class="short-job">'+joblink(s.id,s.name)+' <span class="logi-cnt">'+s.count+' short</span></div><div class="short-items">'+list+'</div></div>';
         }).join('');
     }
     document.getElementById("logi-detail").innerHTML = dh || '<div class="status empty">No sub-rentals or shortages in the window.</div>';
