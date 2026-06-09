@@ -177,8 +177,10 @@ def main():
 
     # Active opportunities (default scope already excludes cancelled/dead).
     # Embed items so we don't make an N+1 call per opp.
+    # NB: once any include[] is set, RMS only returns the associations you ask
+    # for — so owner (the account manager) must be requested explicitly too.
     opps = get_all("/opportunities", "opportunities",
-                   params={"include[]": "opportunity_items"})
+                   params={"include[]": ["opportunity_items", "owner"]})
 
     if DEBUG and opps:
         print("=== First opportunity raw keys ===")
@@ -194,11 +196,16 @@ def main():
     buckets = defaultdict(lambda: {"prep_c": 0.0, "prep_r": 0.0,
                                    "deprep_c": 0.0, "deprep_r": 0.0,
                                    "jobs": defaultdict(float)})
+    # Account manager per opp (RMS "owner" = assigned user) so shop techs know
+    # who to ask about a job.
+    managers = {}
 
     for opp in opps:
         oid  = opp.get("id")
         name = opp.get("subject") or opp.get("number") or f"Opp {oid}"
         confirmed = (opp.get("state_name") == "Order")  # else quoted/unconfirmed
+        owner = opp.get("owner")
+        managers[oid] = owner.get("name") if isinstance(owner, dict) else None
         items = opp.get("opportunity_items", [])
         if not items:
             # items not embedded for this config — fetch explicitly
@@ -261,7 +268,8 @@ def main():
         if atrisk_mins > 0 and contingency < 1:
             contingency = 1
         top = sorted(b["jobs"].items(), key=lambda kv: kv[1], reverse=True)[:4]
-        jobs = [{"id": oid, "name": n, "phase": ph, "confirmed": conf, "hours": round(m / 60, 1)}
+        jobs = [{"id": oid, "name": n, "phase": ph, "confirmed": conf, "hours": round(m / 60, 1),
+                 "manager": managers.get(oid)}
                 for (oid, n, ph, conf), m in top]
         rows.append({
             "date": d.isoformat(),
@@ -294,6 +302,7 @@ def main():
             "status": opp.get("status_name"),     # e.g. "Provisional" / "Open"
             "out_date": od.isoformat(),
             "value": round(num(opp.get("charge_total")), 0),
+            "manager": managers.get(opp.get("id")),
         })
     risk.sort(key=lambda r: (r["out_date"], -r["value"]))
 

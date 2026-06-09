@@ -68,6 +68,7 @@
   .job a.jn:hover{color:var(--cyan);border-bottom-color:var(--cyan)}
   .qflag{font-size:8.5px;font-weight:800;letter-spacing:.5px;color:var(--amber);
     border:1px solid rgba(232,168,56,.5);background:var(--amber-dim);border-radius:4px;padding:1px 5px}
+  .jmgr{font-size:11px;color:var(--faint);font-weight:600;margin-left:auto;white-space:nowrap}
   .splitline{display:flex;flex-wrap:wrap;gap:12px;font-size:11.5px;margin-top:2px}
   .splitline .firm{color:var(--green);font-weight:600}
   .splitline .prov{color:var(--amber);font-weight:600}
@@ -99,7 +100,7 @@
   @media(max-width:720px){.risk-row{grid-template-columns:1fr;gap:2px}.risk-meta{text-align:left}}
   .tabs{display:flex;margin-bottom:22px;border-bottom:1px solid var(--line)}
   .tab{background:none;border:none;color:var(--muted);font-family:'Inter';font-size:15px;font-weight:600;
-    padding:9px 4px;margin-right:20px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+    padding:9px 4px;margin-right:20px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;text-decoration:none}
   .tab:hover{color:var(--ink)} .tab.active{color:var(--cyan);border-bottom-color:var(--cyan)}
   .d-logi{border-left:1px solid var(--line);padding:11px 13px;display:flex;flex-direction:column;
     gap:7px;justify-content:center;background:linear-gradient(160deg,#10131a,var(--panel-2))}
@@ -179,7 +180,6 @@
   </nav>
 
   <section id="view-main">
-    <div class="summary" id="summary"></div>
     <div id="risk"></div>
     <div class="sec"><span class="tick"></span>Daily Breakdown</div>
     <div class="days" id="days"></div>
@@ -228,16 +228,6 @@
         '<div class="status empty">No prep or de-prep scheduled in the forecast window.</div>';
       return;
     }
-    const totalHrs=data.reduce((a,d)=>a+(+d.total_hrs||0),0);
-    const atRiskHrs=data.reduce((a,d)=>a+(+d.atrisk_hrs||0),0);
-    const peak=data.reduce((a,d)=>(+d.total_hrs)>(+a.total_hrs)?d:a,data[0]);
-    const maxHands=data.reduce((a,d)=>Math.max(a,+d.shop_hands||0),0);
-    const pk=fd(peak.date);
-    document.getElementById("summary").innerHTML=
-      '<div class="tile c"><div class="label">Days Shown</div><div class="val">'+data.length+'</div></div>'+
-      '<div class="tile g"><div class="label">Total Workload</div><div class="val">'+h(totalHrs)+'<span class="unit">hrs</span></div>'+(atRiskHrs>0?'<div class="meta">incl. '+h(atRiskHrs)+'h unconfirmed</div>':'')+'</div>'+
-      '<div class="tile a"><div class="label">Peak Day</div><div class="val">'+h(peak.total_hrs)+'<span class="unit">hrs</span></div><div class="meta">'+pk.dow+' '+pk.mon+' '+pk.dnum+'</div></div>'+
-      '<div class="tile v"><div class="label">Max Shop Hands / Day</div><div class="val">'+maxHands+'</div></div>';
 
     document.getElementById("days").innerHTML=data.map(function(d){
       const dt=fd(d.date);
@@ -248,8 +238,9 @@
           ? '<a class="jn" href="'+rmsBase+'/opportunities/'+encodeURIComponent(j.id)+'?view=d" target="_blank" rel="noopener">'+esc(j.name)+'</a>'
           : '<span class="jn">'+esc(j.name)+'</span>';
         const qf = (j.confirmed===false) ? '<span class="qflag">QUOTE</span>' : '';
+        const mgr = j.manager ? '<span class="jmgr" title="Account manager">AM: '+esc(j.manager)+'</span>' : '';
         return '<div class="job"><span class="tag '+cls+'">'+label+'</span>'+
-               nm+'<span class="jhrs">'+h(j.hours)+'h</span>'+qf+'</div>';
+               nm+'<span class="jhrs">'+h(j.hours)+'h</span>'+qf+mgr+'</div>';
       }).join("") || '<div class="job"><span class="jn" style="color:var(--faint)">—</span></div>';
       const firm=+d.confirmed_hrs||0, atr=+d.atrisk_hrs||0;
       const cap = atr>0
@@ -288,7 +279,7 @@
         return '<div class="risk-row">'+
           '<span class="risk-date">Out '+o.dow+' '+o.mon+' '+o.dnum+'</span>'+
           '<span class="risk-name">'+nm+'</span>'+
-          '<span class="risk-meta"><span class="pill">'+esc(r.state)+'</span>'+(r.status?' · '+esc(r.status):'')+'</span>'+
+          '<span class="risk-meta"><span class="pill">'+esc(r.state)+'</span>'+(r.status?' · '+esc(r.status):'')+(r.manager?' · AM: '+esc(r.manager):'')+'</span>'+
         '</div>';
       }).join("");
       rb.innerHTML =
