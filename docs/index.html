@@ -20,8 +20,8 @@
     background-image:radial-gradient(circle at 12% -5%,rgba(155,140,255,.06),transparent 38%),
                      radial-gradient(circle at 92% 0%,rgba(63,199,212,.05),transparent 40%);
     background-attachment:fixed}
-  header{padding:30px 22px 24px;border-bottom:1px solid var(--line)}
-  .head-row{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;max-width:min(1680px,96vw);margin:0 auto}
+  header{padding:30px 36px 24px;border-bottom:1px solid var(--line)}
+  .head-row{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;max-width:1240px;margin:0 auto}
   .eyebrow{font-size:11.5px;text-transform:uppercase;letter-spacing:2.5px;color:var(--amber);font-weight:700;margin-bottom:7px}
   header h1{font-family:'Playfair Display',serif;font-weight:800;font-size:32px;letter-spacing:.3px;color:#fff}
   header h1 em{font-style:normal;color:var(--cyan)}
@@ -42,7 +42,7 @@
     opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:60}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .toast.err{border-color:var(--amber)}
-  main{max-width:min(1680px,96vw);margin:0 auto;padding:30px 22px 70px}
+  main{max-width:1240px;margin:0 auto;padding:30px 36px 70px}
   .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:34px}
   .tile{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;position:relative;overflow:hidden}
   .tile::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--accent,var(--cyan))}
@@ -142,6 +142,8 @@
   .dtable td{padding:8px 10px;border-bottom:1px solid var(--line);color:var(--ink)}
   .dtable .dt-job a{color:var(--faint);text-decoration:none;border-bottom:1px dotted var(--faint);font-size:12px}
   .dtable .dt-job a:hover{color:var(--cyan);border-bottom-color:var(--cyan)}
+  .dtable .qparts{color:var(--faint);font-size:11px;font-weight:600}
+  .dtable .dt-win{color:var(--muted);font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
   .short-block{padding:9px 0;border-bottom:1px solid var(--line)}
   .short-job .short-name{color:var(--ink);font-weight:700}
   .short-links{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px}
@@ -273,6 +275,7 @@
       if(!s) return '<span class="nd">not set</span>';
       const f=fd(s); return f.dow+' '+f.mon+' '+f.dnum;
     }
+    function md(s){ if(!s) return "TBD"; const f=fd(s); return f.mon+' '+f.dnum; }   // compact "Jun 17"
     document.getElementById("shiftnote").textContent = payload.shift_hours || 8;
     if(payload.generated_at){
       document.getElementById("updated").textContent =
@@ -378,10 +381,15 @@
     let dh='';
     if(subs.length){
       dh += '<div class="sec"><span class="tick"></span>Sub-rentals</div>'+
-        '<table class="dtable"><thead><tr><th>Item</th><th>Qty</th><th>Supplier</th><th>Job</th></tr></thead><tbody>'+
+        '<table class="dtable"><thead><tr><th>Item</th><th>Qty</th><th>Window</th><th>Supplier</th><th>Job</th></tr></thead><tbody>'+
         subs.map(function(s){
           const sup = s.supplier ? esc(s.supplier) : '<span class="logi-unalloc">Unallocated</span>';
-          return '<tr><td>'+esc(s.item)+'</td><td>'+(+s.qty)+'</td><td>'+sup+'</td><td class="dt-job">'+joblink(s.id,s.name)+'</td></tr>';
+          // Combined sub-rent bookings show the parts added up, e.g. 12 (10+2).
+          const qtxt = (s.parts && s.parts.length>1)
+            ? (+s.qty)+' <span class="qparts">('+s.parts.map(function(p){return +p;}).join('+')+')</span>'
+            : (+s.qty);
+          const win = md(s.pickup_date)+' → '+md(s.return_date);
+          return '<tr><td>'+esc(s.item)+'</td><td>'+qtxt+'</td><td class="dt-win">'+win+'</td><td>'+sup+'</td><td class="dt-job">'+joblink(s.id,s.name)+'</td></tr>';
         }).join('')+'</tbody></table>';
     }
     if(shorts.length){
@@ -440,7 +448,8 @@
       {weekday:'short',year:'numeric',month:'short',day:'numeric'});
   }
   function buildRequest(s){
-    const ref = s.number || ("Opp "+s.id);
+    // Strip the zero-padding off the RMS number for a clean reference (1287, not 0000001287).
+    const ref = (String(s.number||"").replace(/^0+/,"")) || ("Opp "+s.id);
     const L = ["Hi,", "",
       "We'd like to request a sub-rental quote for the following:", "",
       "Our reference: "+ref,

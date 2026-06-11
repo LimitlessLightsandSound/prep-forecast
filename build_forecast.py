@@ -412,6 +412,14 @@ def main():
         return sum(q for (s, e, q) in prod_demand.get(pid, [])
                    if s < end and start < e)
 
+    def job_dates(opp):
+        """(pickup, return) for a job: first prep day and de-prep day, ISO or None."""
+        prep_span = days_span(first_key(opp, PREP_START_KEYS), first_key(opp, OUT_KEYS))
+        prep_days = (prep_span[:-1] or [prep_span[-1] - dt.timedelta(days=1)]) if prep_span else []
+        deprep_days = days_span(first_key(opp, RETURN_START_KEYS), first_key(opp, RETURN_END_KEYS))
+        return (prep_days[0].isoformat() if prep_days else None,
+                deprep_days[0].isoformat() if deprep_days else None)
+
     sub_rentals, shortages = [], []
     for opp in opps:
         out = first_key(opp, OUT_KEYS)
@@ -450,29 +458,36 @@ def main():
             # Organise by product group (POWER, CABLE, ...), then biggest shortage
             # first within a group, so the list reads like a pull sheet.
             short_items.sort(key=lambda x: (x["group"], -x["qty"], x["name"]))
-            # Pickup = first prep day; return = de-prep day (the shop's own timing).
-            prep_span = days_span(first_key(opp, PREP_START_KEYS), first_key(opp, OUT_KEYS))
-            prep_days = (prep_span[:-1] or [prep_span[-1] - dt.timedelta(days=1)]) if prep_span else []
-            deprep_days = days_span(first_key(opp, RETURN_START_KEYS), first_key(opp, RETURN_END_KEYS))
+            pu, rt = job_dates(opp)   # pickup = first prep day, return = de-prep day
             shortages.append({
                 "id": oid, "name": name, "number": opp.get("number"),
                 "out_date": od.isoformat(),
-                "pickup_date": prep_days[0].isoformat() if prep_days else None,
-                "return_date": deprep_days[0].isoformat() if deprep_days else None,
+                "pickup_date": pu, "return_date": rt,
                 "count": len(short_items),
                 "items": short_items,   # full list — no roll-off
             })
         if any(it.get("sub_rent") for it in items):
             nested = get_all(f"/opportunities/{oid}/opportunity_items",
                              "opportunity_items", page_size=100)
+            pu, rt = job_dates(opp)
+            # Combine repeat sub-rent bookings of the same item+supplier into one
+            # line: sum the quantity and keep the parts so the UI can show "10+2".
+            agg = {}   # (item, supplier) -> {qty, parts}
             for it in nested:
                 for a in (it.get("item_assets") or []):
                     if a.get("sub_rent"):
-                        sub_rentals.append({
-                            "id": oid, "name": name,
-                            "item": it.get("name"), "qty": num(a.get("quantity")),
-                            "supplier": supplier_name(a.get("supplier_id")),
-                        })
+                        key = (it.get("name"), supplier_name(a.get("supplier_id")))
+                        e = agg.setdefault(key, {"qty": 0.0, "parts": []})
+                        qa = num(a.get("quantity"))
+                        e["qty"] += qa
+                        e["parts"].append(qa)
+            for (itname, sup), e in agg.items():
+                parts = sorted(e["parts"], reverse=True)
+                sub_rentals.append({
+                    "id": oid, "name": name, "item": itname, "qty": e["qty"],
+                    "parts": parts if len(parts) > 1 else None,
+                    "supplier": sup, "pickup_date": pu, "return_date": rt,
+                })
     sub_rentals.sort(key=lambda s: (s["name"], s["item"]))
 
     # Mark SHARED shortages: the same product short on more than one opportunity in
