@@ -482,12 +482,18 @@ def main():
     for sh in shortages:
         for it in sh["items"]:
             prod_jobs[it["pid"]].append((sh["id"], sh["name"]))
+    # Stable colour index per contested product so the SAME shared item lights up
+    # the same colour across every job competing for it (sorted pid -> 0,1,2,...).
+    shared_pids = sorted(pid for pid, jobs in prod_jobs.items()
+                         if len({oid for oid, _ in jobs}) > 1)
+    color_of = {pid: i for i, pid in enumerate(shared_pids)}
     for sh in shortages:
         for it in sh["items"]:
             others = sorted({nm for (oid, nm) in prod_jobs[it["pid"]] if oid != sh["id"]})
-            it["shared"] = bool(others)
             if others:
-                it["shared_with"] = others
+                it["shared"] = True
+                it["shared_color"] = color_of[it["pid"]]
+                it["shared_with"] = others   # kept for the chip's hover tooltip only
             it.pop("pid", None)   # internal join key — keep it out of the payload
 
     # Per-prep-day logistics ticket: for each prep day, the jobs prepping that day
