@@ -455,7 +455,8 @@ def main():
             prep_days = (prep_span[:-1] or [prep_span[-1] - dt.timedelta(days=1)]) if prep_span else []
             deprep_days = days_span(first_key(opp, RETURN_START_KEYS), first_key(opp, RETURN_END_KEYS))
             shortages.append({
-                "id": oid, "name": name, "out_date": od.isoformat(),
+                "id": oid, "name": name, "number": opp.get("number"),
+                "out_date": od.isoformat(),
                 "pickup_date": prep_days[0].isoformat() if prep_days else None,
                 "return_date": deprep_days[0].isoformat() if deprep_days else None,
                 "count": len(short_items),

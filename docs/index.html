@@ -144,7 +144,12 @@
   .dtable .dt-job a:hover{color:var(--cyan);border-bottom-color:var(--cyan)}
   .short-block{padding:9px 0;border-bottom:1px solid var(--line)}
   .short-job .short-name{color:var(--ink);font-weight:700}
-  .short-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+  .short-links{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px}
+  .copy-req{font-size:11px;font-weight:700;color:var(--green);background:rgba(75,191,135,.13);
+    border:1px solid rgba(75,191,135,.4);padding:3px 11px;border-radius:7px;cursor:pointer;
+    font-family:'Inter';white-space:nowrap}
+  .copy-req:hover{filter:brightness(1.18);border-color:var(--green)}
+  .copy-req:active{transform:translateY(1px)}
   .short-link{font-size:11px;font-weight:700;color:var(--cyan);text-decoration:none;background:var(--cyan-dim);
     border:1px solid rgba(63,199,212,.35);padding:3px 10px;border-radius:7px;white-space:nowrap}
   .short-link:hover{filter:brightness(1.2);border-color:var(--cyan)}
@@ -381,7 +386,7 @@
     }
     if(shorts.length){
       dh += '<div class="sec"><span class="tick"></span>Shortages</div>'+
-        shorts.map(function(s){
+        shorts.map(function(s, idx){
           const cnt=s.count+' item'+(s.count===1?'':'s')+' short';
           // Cluster the (already group-sorted) items under product-group headers.
           const groups=[], seen={};
@@ -406,17 +411,63 @@
           const dates='<div class="short-dates">'+
             '<span><b>Pickup</b> '+shdate(s.pickup_date)+'</span>'+
             '<span><b>Return</b> '+shdate(s.return_date)+'</span></div>';
-          // Two ways into Current RMS for each job — pick either per click.
-          const links=(s.id&&rmsBase)?('<div class="short-links">'+
+          // Copy a vendor-ready request, plus two ways into Current RMS per job.
+          const rmsLinks=(s.id&&rmsBase)?(
             '<a class="short-link" href="'+rmsBase+'/opportunities/'+encodeURIComponent(s.id)+'?view=d" target="_blank" rel="noopener" title="Open the opportunity detail in Current RMS">Opportunity ↗</a>'+
-            '<a class="short-link av" href="'+rmsBase+'/availability/opportunity/'+encodeURIComponent(s.id)+'" target="_blank" rel="noopener" title="Open the availability grid in Current RMS">Availability ↗</a>'+
-            '</div>'):'';
+            '<a class="short-link av" href="'+rmsBase+'/availability/opportunity/'+encodeURIComponent(s.id)+'" target="_blank" rel="noopener" title="Open the availability grid in Current RMS">Availability ↗</a>'):'';
+          const links='<div class="short-links">'+
+            '<button class="copy-req" data-shidx="'+idx+'" title="Copy a vendor-ready sub-rental request to paste into an email">⧉ Copy request</button>'+
+            rmsLinks+'</div>';
           return '<div class="short-block"><div class="short-job"><span class="short-name">'+esc(s.name)+'</span>'+
             ' <span class="logi-cnt">'+cnt+'</span></div>'+links+dates+
             '<div class="short-items">'+body+'</div></div>';
         }).join('');
     }
     document.getElementById("logi-detail").innerHTML = dh || '<div class="status empty">No sub-rentals or shortages in the window.</div>';
+    // Wire up the per-job "Copy request" buttons (vendor-ready text -> clipboard).
+    document.querySelectorAll("#logi-detail .copy-req").forEach(function(b){
+      b.addEventListener("click", function(){ copyRequest(shorts[+b.getAttribute("data-shidx")]); });
+    });
+  }
+
+  // --- Vendor-ready sub-rental request (Copy → paste into email) ---------------
+  // Plain text only, so it drops into Gmail with no reformatting. Carries our
+  // reference (the RMS opportunity number), the expected pickup/return dates and
+  // a clean item list — no "shared" markers — plus the reference reminder note.
+  function vendorDate(s){
+    if(!s) return "TBD";
+    return new Date(s+"T00:00:00").toLocaleDateString('en-US',
+      {weekday:'short',year:'numeric',month:'short',day:'numeric'});
+  }
+  function buildRequest(s){
+    const ref = s.number || ("Opp "+s.id);
+    const L = ["Hi,", "",
+      "We'd like to request a sub-rental quote for the following:", "",
+      "Our reference: "+ref,
+      "Expected pickup: "+vendorDate(s.pickup_date),
+      "Expected return: "+vendorDate(s.return_date), ""];
+    (s.items||[]).forEach(function(it){
+      const nm=(it&&it.name!=null)?it.name:it;
+      L.push("  • "+nm+" — "+(+it.qty));
+    });
+    L.push("", "Please put our reference ("+ref+") on your quote and on all invoices.",
+      "", "Thank you.");
+    return L.join("\n");
+  }
+  function fallbackCopy(text){
+    const ta=document.createElement("textarea");
+    ta.value=text; ta.style.position="fixed"; ta.style.opacity="0";
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try{ document.execCommand("copy"); }catch(e){}
+    document.body.removeChild(ta);
+  }
+  function copyRequest(s){
+    if(!s) return;
+    const text=buildRequest(s);
+    const ok=function(){ toast("Request copied — paste into your email"); };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(ok, function(){ fallbackCopy(text); ok(); });
+    } else { fallbackCopy(text); ok(); }
   }
 
   // --- Shared-passphrase decryption (AES-256-GCM, PBKDF2), runs in-browser ---
