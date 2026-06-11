@@ -342,15 +342,19 @@ def main():
         return _member[sid]
 
     # --- Real shortage QUANTITIES ------------------------------------------
-    # RMS flags a line `has_shortage` but never says HOW MANY are short. The
-    # line quantity is the full booked amount, which massively over-states the
-    # shortage — a job needing 4 of something we own 3 of is 1 short, not 4.
-    # Compute the true shortfall as:
-    #     short = min(qty this job booked, max(0, concurrent_demand - supply))
+    # RMS flags a line `has_shortage` but never says HOW MANY are short, and the
+    # public API exposes no availability figure. The line quantity is the full
+    # booked amount, which massively over-states the shortage. We reconstruct the
+    # shortfall the way RMS's Availability view does, over the job's window:
+    #     supply = owned stock − quarantine − flagged-unavailable
+    #     short  = min(qty this job booked, max(0, concurrent_demand − supply))
     # concurrent_demand = every active booking of that product whose window
-    # overlaps this job's; supply = units owned less any flagged unavailable
-    # (maintenance). Capping at the job's own quantity keeps the per-job number
-    # honest — we never claim a job is short more units than it actually booked.
+    # overlaps this job's. QUARANTINE matters and is easy to miss: damaged/lost
+    # gear sits in an open-ended quarantine record that does NOT appear in the
+    # stock level's quantity_unavailable, yet RMS removes it from availability —
+    # so ignoring it under-counts the shortage (e.g. 3 quarantined True1 cables
+    # turn a "5 short" into the correct "8 short"). Capping at the job's own
+    # quantity keeps the per-job number honest.
     prod_demand = defaultdict(list)   # product_id -> [(start, end, qty)]
     for opp in opps:
         for it in opp.get("opportunity_items", []):
@@ -360,16 +364,36 @@ def main():
             if s and e:
                 prod_demand[it.get("item_id")].append((s, e, num(it.get("quantity"))))
 
-    _stock = {}
-    def stock_owned(pid):
-        """Units of a product the shop owns and can rent, net of maintenance holds."""
-        if pid not in _stock:
+    _held = {}
+    def stock_held(pid):
+        """Units the shop physically holds, net of flagged-unavailable stock."""
+        if pid not in _held:
             rows = get_all("/stock_levels", "stock_levels",
                            params={"q[item_id_eq]": pid}, page_size=100)
             held = sum(num(r.get("quantity_held")) for r in rows)
             unav = sum(num(r.get("quantity_unavailable")) for r in rows)
-            _stock[pid] = max(0.0, held - unav)
-        return _stock[pid]
+            _held[pid] = max(0.0, held - unav)
+        return _held[pid]
+
+    _quar = {}
+    def quarantined(pid, start, end):
+        """Units in quarantine (damaged/lost/maintenance hold) overlapping [start,end)."""
+        if pid not in _quar:
+            rows = get_all("/quarantines", "quarantines",
+                           params={"q[item_id_eq]": pid, "q[active_eq]": "true"},
+                           page_size=100)
+            _quar[pid] = [(parse_dt(r.get("starts_at")), parse_dt(r.get("ends_at")),
+                           num(r.get("quantity")) - num(r.get("quantity_out")))
+                          for r in rows if r.get("active")]
+        tot = 0.0
+        for (s, e, q) in _quar[pid]:
+            if q > 0 and s and e and s < end and start < e:
+                tot += q
+        return tot
+
+    def supply(pid, start, end):
+        """Units of a product genuinely available to rent across [start,end)."""
+        return stock_held(pid) - quarantined(pid, start, end)
 
     def concurrent_demand(pid, start, end):
         """Total qty of a product booked across all active opps overlapping [start,end)."""
@@ -402,7 +426,8 @@ def main():
             short_items = []
             for pid, g in by_prod.items():
                 if g["start"] and g["end"]:
-                    over = concurrent_demand(pid, g["start"], g["end"]) - stock_owned(pid)
+                    over = (concurrent_demand(pid, g["start"], g["end"])
+                            - supply(pid, g["start"], g["end"]))
                     short = min(g["qty"], max(0.0, over))
                 else:
                     short = g["qty"]
