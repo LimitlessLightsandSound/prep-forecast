@@ -433,38 +433,52 @@ def main():
         # the same product into one so a product short across two lines shows once.
         short_lines = [it for it in items
                        if it.get("has_shortage") and it.get("item_type") == "Product"]
-        if short_lines:
-            by_prod = {}   # product_id -> {name, qty, start, end}
-            for it in short_lines:
-                pid = it.get("item_id")
-                s, e = parse_dt(it.get("starts_at")), parse_dt(it.get("ends_at"))
-                g = by_prod.setdefault(pid, {"name": it.get("name"), "qty": 0.0,
-                                             "start": s, "end": e})
-                g["qty"] += num(it.get("quantity"))
-                if s and (g["start"] is None or s < g["start"]): g["start"] = s
-                if e and (g["end"]  is None or e > g["end"]):    g["end"]  = e
+        # Text items are free-text lines not linked to a catalog product, so RMS
+        # can't compute availability and NEVER flags them short — surface them too
+        # so gear booked as text isn't silently missed. (qty 0 = a note/heading.)
+        text_lines = [it for it in items
+                      if it.get("item_type") == "TextItem" and num(it.get("quantity")) > 0]
+        if short_lines or text_lines:
             short_items = []
-            for pid, g in by_prod.items():
-                if g["start"] and g["end"]:
-                    over = (concurrent_demand(pid, g["start"], g["end"])
-                            - supply(pid, g["start"], g["end"]))
-                    short = min(g["qty"], max(0.0, over))
-                else:
-                    short = g["qty"]
-                # RMS flagged this product short; never hide that — floor at 1 unit.
-                short = max(1, round(short))
-                short_items.append({"name": g["name"], "qty": short,
-                                    "group": group_name(pid), "pid": pid})
-            # Organise by product group (POWER, CABLE, ...), then biggest shortage
-            # first within a group, so the list reads like a pull sheet.
-            short_items.sort(key=lambda x: (x["group"], -x["qty"], x["name"]))
+            if short_lines:
+                by_prod = {}   # product_id -> {name, qty, start, end}
+                for it in short_lines:
+                    pid = it.get("item_id")
+                    s, e = parse_dt(it.get("starts_at")), parse_dt(it.get("ends_at"))
+                    g = by_prod.setdefault(pid, {"name": it.get("name"), "qty": 0.0,
+                                                 "start": s, "end": e})
+                    g["qty"] += num(it.get("quantity"))
+                    if s and (g["start"] is None or s < g["start"]): g["start"] = s
+                    if e and (g["end"]  is None or e > g["end"]):    g["end"]  = e
+                for pid, g in by_prod.items():
+                    if g["start"] and g["end"]:
+                        over = (concurrent_demand(pid, g["start"], g["end"])
+                                - supply(pid, g["start"], g["end"]))
+                        short = min(g["qty"], max(0.0, over))
+                    else:
+                        short = g["qty"]
+                    # RMS flagged this product short; never hide that — floor at 1.
+                    short = max(1, round(short))
+                    short_items.append({"name": g["name"], "qty": short,
+                                        "group": group_name(pid), "pid": pid})
+                # Organise by product group (POWER, CABLE, ...), then biggest
+                # shortage first within a group, so it reads like a pull sheet.
+                short_items.sort(key=lambda x: (x["group"], -x["qty"], x["name"]))
+            # Aggregate text items by name (combine repeat lines).
+            tagg = {}
+            for it in text_lines:
+                nm = it.get("name") or "—"
+                tagg[nm] = tagg.get(nm, 0.0) + num(it.get("quantity"))
+            text_items = [{"name": nm, "qty": q} for nm, q in sorted(tagg.items())]
             pu, rt = job_dates(opp)   # pickup = first prep day, return = de-prep day
             shortages.append({
                 "id": oid, "name": name, "number": opp.get("number"),
                 "out_date": od.isoformat(),
                 "pickup_date": pu, "return_date": rt,
                 "count": len(short_items),
-                "items": short_items,   # full list — no roll-off
+                "text_count": len(text_items),
+                "items": short_items,        # full list — no roll-off
+                "text_items": text_items,    # RMS-untracked free-text lines
             })
         if any(it.get("sub_rent") for it in items):
             nested = get_all(f"/opportunities/{oid}/opportunity_items",
@@ -489,6 +503,19 @@ def main():
                     "supplier": sup, "pickup_date": pu, "return_date": rt,
                 })
     sub_rentals.sort(key=lambda s: (s["name"], s["item"]))
+
+    # A text item that already has a sub-rental booking is being sourced (it shows
+    # in the Sub-rentals table), so drop it from the text-item flag — keep only the
+    # free-text lines nothing has been arranged for yet. Then drop any job left with
+    # neither a product shortage nor an un-sourced text item.
+    subrent_names = defaultdict(set)
+    for s in sub_rentals:
+        subrent_names[s["id"]].add(s["item"])
+    for sh in shortages:
+        covered = subrent_names.get(sh["id"], set())
+        sh["text_items"] = [t for t in sh.get("text_items", []) if t["name"] not in covered]
+        sh["text_count"] = len(sh["text_items"])
+    shortages = [sh for sh in shortages if sh["count"] or sh["text_count"]]
 
     # Mark SHARED shortages: the same product short on more than one opportunity in
     # the window. Those jobs compete for the SAME scarce stock, so their per-job

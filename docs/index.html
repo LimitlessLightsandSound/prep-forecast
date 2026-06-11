@@ -164,6 +164,11 @@
   .short-grp{margin-top:8px}
   .short-grp:first-child{margin-top:0}
   .short-grp-h{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--violet);font-weight:700;margin-bottom:3px}
+  .text-cnt{color:var(--amber);font-weight:700;font-size:13px}
+  .short-grp.text-grp{border-top:1px dashed var(--line);padding-top:7px;margin-top:9px}
+  .short-grp-h.text-h{color:var(--amber)}
+  .short-item .sq.tq{color:var(--muted)}
+  .text-note{font-size:10.5px;color:var(--faint);font-style:italic;margin-top:4px;padding-left:15px}
   .short-item{padding-left:15px;position:relative}
   .short-item::before{content:"•";position:absolute;left:3px;color:var(--faint)}
   .short-item .sq{color:var(--amber);font-weight:700;font-variant-numeric:tabular-nums;margin-left:4px}
@@ -395,7 +400,10 @@
     if(shorts.length){
       dh += '<div class="sec"><span class="tick"></span>Shortages</div>'+
         shorts.map(function(s, idx){
-          const cnt=s.count+' item'+(s.count===1?'':'s')+' short';
+          // Badges: product shortages (computed) and text items (RMS can't track).
+          let badges='';
+          if(s.count>0) badges+='<span class="logi-cnt">'+s.count+' item'+(s.count===1?'':'s')+' short</span>';
+          if(s.text_count>0) badges+=' <span class="text-cnt" title="Free-text lines — Current RMS does not track availability on these">⚑ '+s.text_count+' text item'+(s.text_count===1?'':'s')+'</span>';
           // Cluster the (already group-sorted) items under product-group headers.
           const groups=[], seen={};
           (s.items||[]).forEach(function(it){
@@ -416,6 +424,15 @@
             }).join('');
             return '<div class="short-grp"><div class="short-grp-h">'+esc(gr.name)+'</div>'+rows+'</div>';
           }).join('');
+          // Text items: flagged separately since RMS never marks them short.
+          const textBody=(s.text_items&&s.text_items.length)?(
+            '<div class="short-grp text-grp"><div class="short-grp-h text-h">⚑ Text items · not tracked by RMS</div>'+
+            s.text_items.map(function(it){
+              const q=(it&&it.qty)?' <span class="sq tq">×'+(+it.qty)+'</span>':'';
+              return '<div class="short-item">'+esc(it.name!=null?it.name:it)+q+'</div>';
+            }).join('')+
+            '<div class="text-note">Current RMS can’t flag availability on text lines — confirm/source these manually.</div>'+
+            '</div>'):'';
           const dates='<div class="short-dates">'+
             '<span><b>Pickup</b> '+shdate(s.pickup_date)+'</span>'+
             '<span><b>Return</b> '+shdate(s.return_date)+'</span></div>';
@@ -427,8 +444,8 @@
             '<button class="copy-req" data-shidx="'+idx+'" title="Copy a vendor-ready sub-rental request to paste into an email">⧉ Copy request</button>'+
             rmsLinks+'</div>';
           return '<div class="short-block"><div class="short-job"><span class="short-name">'+esc(s.name)+'</span>'+
-            ' <span class="logi-cnt">'+cnt+'</span></div>'+links+dates+
-            '<div class="short-items">'+body+'</div></div>';
+            ' '+badges+'</div>'+links+dates+
+            '<div class="short-items">'+body+textBody+'</div></div>';
         }).join('');
     }
     document.getElementById("logi-detail").innerHTML = dh || '<div class="status empty">No sub-rentals or shortages in the window.</div>';
@@ -459,6 +476,15 @@
       const nm=(it&&it.name!=null)?it.name:it;
       L.push("  • "+nm+" — "+(+it.qty));
     });
+    // Text items (RMS-untracked) — include them as sourcing needs, clearly noted.
+    if(s.text_items && s.text_items.length){
+      if((s.items||[]).length) L.push("");
+      L.push("Text-described items (please confirm exact spec):");
+      s.text_items.forEach(function(it){
+        const nm=(it&&it.name!=null)?it.name:it;
+        L.push("  • "+nm+" — "+(+it.qty));
+      });
+    }
     L.push("", "Please put our reference ("+ref+") on your quote and on all invoices.",
       "", "Thank you.");
     return L.join("\n");
