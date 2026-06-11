@@ -155,6 +155,10 @@
   .short-item{padding-left:15px;position:relative}
   .short-item::before{content:"•";position:absolute;left:3px;color:var(--faint)}
   .short-item .sq{color:var(--amber);font-weight:700;font-variant-numeric:tabular-nums;margin-left:4px}
+  .shared-tag{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--violet);
+    background:var(--violet-dim);border:1px solid rgba(155,140,255,.4);padding:1px 6px;border-radius:5px;
+    margin-left:6px;cursor:help;vertical-align:middle;white-space:nowrap}
+  .short-shared{font-size:11px;color:var(--faint);font-style:italic;margin-top:1px}
   .gate{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
     background:rgba(8,10,14,.93);backdrop-filter:blur(5px)}
   .gate.hidden{display:none}
@@ -388,7 +392,12 @@
             const rows=gr.items.map(function(it){
               const nm=(it&&it.name!=null)?it.name:it;            // back-compat if string
               const q=(it&&it.qty)?' <span class="sq">'+(+it.qty)+' short</span>':'';
-              return '<div class="short-item">'+esc(nm)+q+'</div>';
+              // Shared = same product short on another job; they fight for the same
+              // stock, so the quantities overlap — flag it and name the other jobs.
+              const sw=(it&&it.shared_with)||[];
+              const tag=(it&&it.shared)?' <span class="shared-tag" title="Same stock contested by another job — don’t double-source">⇄ Shared</span>':'';
+              const note=sw.length?'<div class="short-shared">also short on '+sw.map(esc).join(' · ')+'</div>':'';
+              return '<div class="short-item">'+esc(nm)+q+tag+note+'</div>';
             }).join('');
             return '<div class="short-grp"><div class="short-grp-h">'+esc(gr.name)+'</div>'+rows+'</div>';
           }).join('');

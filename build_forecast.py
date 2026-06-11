@@ -446,7 +446,7 @@ def main():
                 # RMS flagged this product short; never hide that — floor at 1 unit.
                 short = max(1, round(short))
                 short_items.append({"name": g["name"], "qty": short,
-                                    "group": group_name(pid)})
+                                    "group": group_name(pid), "pid": pid})
             # Organise by product group (POWER, CABLE, ...), then biggest shortage
             # first within a group, so the list reads like a pull sheet.
             short_items.sort(key=lambda x: (x["group"], -x["qty"], x["name"]))
@@ -473,6 +473,22 @@ def main():
                             "supplier": supplier_name(a.get("supplier_id")),
                         })
     sub_rentals.sort(key=lambda s: (s["name"], s["item"]))
+
+    # Mark SHARED shortages: the same product short on more than one opportunity in
+    # the window. Those jobs compete for the SAME scarce stock, so their per-job
+    # quantities are the same physical units — sourcing once can clear several jobs
+    # (don't double-buy). Tag each such line and list the other jobs it clashes with.
+    prod_jobs = defaultdict(list)   # pid -> [(oid, name)]
+    for sh in shortages:
+        for it in sh["items"]:
+            prod_jobs[it["pid"]].append((sh["id"], sh["name"]))
+    for sh in shortages:
+        for it in sh["items"]:
+            others = sorted({nm for (oid, nm) in prod_jobs[it["pid"]] if oid != sh["id"]})
+            it["shared"] = bool(others)
+            if others:
+                it["shared_with"] = others
+            it.pop("pid", None)   # internal join key — keep it out of the payload
 
     # Per-prep-day logistics ticket: for each prep day, the jobs prepping that day
     # that have sub-rentals (vendor / unallocated) or shortages. No pickup/return
