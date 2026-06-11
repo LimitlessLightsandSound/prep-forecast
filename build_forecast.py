@@ -341,6 +341,41 @@ def main():
             _member[sid] = nm.replace("(SUPPLIER)", "").strip() or None
         return _member[sid]
 
+    # --- Real shortage QUANTITIES ------------------------------------------
+    # RMS flags a line `has_shortage` but never says HOW MANY are short. The
+    # line quantity is the full booked amount, which massively over-states the
+    # shortage — a job needing 4 of something we own 3 of is 1 short, not 4.
+    # Compute the true shortfall as:
+    #     short = min(qty this job booked, max(0, concurrent_demand - supply))
+    # concurrent_demand = every active booking of that product whose window
+    # overlaps this job's; supply = units owned less any flagged unavailable
+    # (maintenance). Capping at the job's own quantity keeps the per-job number
+    # honest — we never claim a job is short more units than it actually booked.
+    prod_demand = defaultdict(list)   # product_id -> [(start, end, qty)]
+    for opp in opps:
+        for it in opp.get("opportunity_items", []):
+            if it.get("item_type") != "Product":
+                continue
+            s, e = parse_dt(it.get("starts_at")), parse_dt(it.get("ends_at"))
+            if s and e:
+                prod_demand[it.get("item_id")].append((s, e, num(it.get("quantity"))))
+
+    _stock = {}
+    def stock_owned(pid):
+        """Units of a product the shop owns and can rent, net of maintenance holds."""
+        if pid not in _stock:
+            rows = get_all("/stock_levels", "stock_levels",
+                           params={"q[item_id_eq]": pid}, page_size=100)
+            held = sum(num(r.get("quantity_held")) for r in rows)
+            unav = sum(num(r.get("quantity_unavailable")) for r in rows)
+            _stock[pid] = max(0.0, held - unav)
+        return _stock[pid]
+
+    def concurrent_demand(pid, start, end):
+        """Total qty of a product booked across all active opps overlapping [start,end)."""
+        return sum(q for (s, e, q) in prod_demand.get(pid, [])
+                   if s < end and start < e)
+
     sub_rentals, shortages = [], []
     for opp in opps:
         out = first_key(opp, OUT_KEYS)
@@ -350,13 +385,35 @@ def main():
         oid  = opp.get("id")
         name = opp.get("subject") or opp.get("number") or f"Opp {oid}"
         items = opp.get("opportunity_items", [])
-        short_lines = [it for it in items if it.get("has_shortage")]
+        # Only Products carry stock (and thus shortages); collapse repeat lines of
+        # the same product into one so a product short across two lines shows once.
+        short_lines = [it for it in items
+                       if it.get("has_shortage") and it.get("item_type") == "Product"]
         if short_lines:
+            by_prod = {}   # product_id -> {name, qty, start, end}
+            for it in short_lines:
+                pid = it.get("item_id")
+                s, e = parse_dt(it.get("starts_at")), parse_dt(it.get("ends_at"))
+                g = by_prod.setdefault(pid, {"name": it.get("name"), "qty": 0.0,
+                                             "start": s, "end": e})
+                g["qty"] += num(it.get("quantity"))
+                if s and (g["start"] is None or s < g["start"]): g["start"] = s
+                if e and (g["end"]  is None or e > g["end"]):    g["end"]  = e
+            short_items = []
+            for pid, g in by_prod.items():
+                if g["start"] and g["end"]:
+                    over = concurrent_demand(pid, g["start"], g["end"]) - stock_owned(pid)
+                    short = min(g["qty"], max(0.0, over))
+                else:
+                    short = g["qty"]
+                # RMS flagged this product short; never hide that — floor at 1 unit.
+                short = max(1, round(short))
+                short_items.append({"name": g["name"], "qty": short})
+            short_items.sort(key=lambda x: (-x["qty"], x["name"]))
             shortages.append({
                 "id": oid, "name": name, "out_date": od.isoformat(),
-                "count": len(short_lines),
-                "items": [{"name": it.get("name"), "qty": num(it.get("quantity"))}
-                          for it in short_lines[:8]],
+                "count": len(short_items),
+                "items": short_items[:8],
             })
         if any(it.get("sub_rent") for it in items):
             nested = get_all(f"/opportunities/{oid}/opportunity_items",

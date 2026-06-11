@@ -28,6 +28,20 @@
   .sub{font-size:13px;color:var(--muted);margin-top:5px}
   .updated{font-size:12px;color:var(--faint);text-align:right}
   .updated b{color:var(--cyan);font-weight:600;display:block;margin-top:2px;font-size:13px}
+  .resync{margin-top:9px;display:inline-flex;align-items:center;gap:6px;background:var(--panel-2);
+    border:1px solid var(--line);color:var(--cyan);font-family:'Inter';font-size:12px;font-weight:600;
+    padding:6px 13px;border-radius:9px;cursor:pointer;transition:filter .15s,border-color .15s}
+  .resync:hover{filter:brightness(1.25);border-color:var(--cyan)}
+  .resync:disabled{opacity:.55;cursor:default;filter:none}
+  .resync svg{width:13px;height:13px}
+  .resync.spin svg{animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(18px);
+    background:var(--panel-2);border:1px solid var(--green);color:var(--ink);padding:11px 19px;
+    border-radius:11px;font-size:13px;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,.45);
+    opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:60}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.err{border-color:var(--amber)}
   main{max-width:1240px;margin:0 auto;padding:30px 36px 70px}
   .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:34px}
   .tile{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;position:relative;overflow:hidden}
@@ -179,9 +193,15 @@
       <h1>Limitless <em>Logistics</em></h1>
       <div class="sub">Shop floor labour, truck runs &amp; shortages — refreshed automatically</div>
     </div>
-    <div class="updated">Data updated<b id="updated">loading…</b></div>
+    <div class="updated">Data updated<b id="updated">loading…</b>
+      <button id="resync" class="resync" title="Pull the latest published forecast (the feed rebuilds from RMS every 3 hours)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+        Re-sync
+      </button>
+    </div>
   </div>
 </header>
+<div id="toast" class="toast"></div>
 <main>
   <div id="status"></div>
   <nav class="tabs">
@@ -265,7 +285,7 @@
         let chips='';
         (g.vendors||[]).forEach(function(v){ chips+='<span class="lchip vend">'+esc(v)+'</span>'; });
         if(g.unalloc) chips+='<span class="lchip unalloc">Unallocated</span>';
-        const sb = g.shortage ? '<span class="shmark" title="'+g.shortage+' shortage line(s) in RMS">'+g.shortage+'</span>' : '';
+        const sb = g.shortage ? '<span class="shmark" title="'+g.shortage+' item(s) short in RMS">'+g.shortage+'</span>' : '';
         return '<div class="lgrp"><div class="lgrp-top">'+joblink(g.id,g.name)+sb+'</div>'+(chips?'<div class="lchips">'+chips+'</div>':'')+'</div>';
       }).join('') : '<div class="lnone">—</div>')+'</div>';
       return '<div class="day">'+
@@ -346,11 +366,12 @@
           const extra=s.count-shown.length;
           const list=shown.map(function(it){
               const nm=(it&&it.name!=null)?it.name:it;            // back-compat if string
-              const q=(it&&it.qty)?' <span class="sq">×'+(+it.qty)+'</span>':'';
+              const q=(it&&it.qty)?' <span class="sq">'+(+it.qty)+' short</span>':'';
               return '<div class="short-item">'+esc(nm)+q+'</div>';
             }).join('')
                     +(extra>0?'<div class="short-item more">+ '+extra+' more…</div>':'');
-          return '<div class="short-block"><div class="short-job">'+joblink(s.id,s.name)+' <span class="logi-cnt">'+s.count+' short</span></div><div class="short-items">'+list+'</div></div>';
+          const cnt=s.count+' item'+(s.count===1?'':'s')+' short';
+          return '<div class="short-block"><div class="short-job">'+joblink(s.id,s.name)+' <span class="logi-cnt">'+cnt+'</span></div><div class="short-items">'+list+'</div></div>';
         }).join('');
     }
     document.getElementById("logi-detail").innerHTML = dh || '<div class="status empty">No sub-rentals or shortages in the window.</div>';
@@ -403,23 +424,49 @@
   // Deep-link from the Truck Runs page: index.html#shortages opens the Shortages view.
   if(location.hash === "#shortages") showView("detail");
 
-  fetch(DATA_URL + "?t=" + Date.now())   // cache-bust so the 3-hour refresh shows
-    .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
-    .then(function(data){
+  // Brief confirmation toast (used by the Re-sync button so a tap always gives
+  // feedback, even when the numbers happen to be unchanged since last pull).
+  let toastTimer;
+  function toast(msg, isErr){
+    const t=document.getElementById("toast");
+    t.textContent=msg; t.classList.toggle("err", !!isErr); t.classList.add("show");
+    clearTimeout(toastTimer); toastTimer=setTimeout(function(){ t.classList.remove("show"); }, 2600);
+  }
+
+  // Single loader for both the initial load and the manual Re-sync. Re-sync just
+  // re-fetches the published forecast.json (cache-busted) and re-renders — it can't
+  // force a fresh RMS pull (the pipeline rebuilds that file every 3 hours), but it
+  // guarantees the team sees the latest published figures without a hard refresh.
+  async function loadData(isResync){
+    const btn=document.getElementById("resync");
+    if(isResync){ btn.disabled=true; btn.classList.add("spin"); }
+    try{
+      const r = await fetch(DATA_URL + "?t=" + Date.now());   // cache-bust
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      const data = await r.json();
       if(data && data.ct && data.kdf){            // encrypted envelope -> gate
         ENVELOPE = data;
         const stored = sessionStorage.getItem("ppf_pass");
-        if(stored){ tryUnlock(stored, true); }    // silent re-unlock within the session
+        if(stored){ await tryUnlock(stored, true); }   // silent re-unlock within the session
         else { gate.classList.remove("hidden"); document.getElementById("gatePass").focus(); }
       } else {
         render(data);                             // plaintext (local/dev only)
       }
-    })
-    .catch(function(e){
-      document.getElementById("updated").textContent="—";
-      document.getElementById("status").innerHTML=
-        '<div class="status err">Couldn\'t load forecast.json ('+e.message+'). The pipeline may not have run yet, or Pages hasn\'t published it.</div>';
-    });
+      if(isResync) toast("Synced — showing the latest published forecast");
+    }catch(e){
+      if(isResync){
+        toast("Re-sync failed: "+e.message, true);
+      } else {
+        document.getElementById("updated").textContent="—";
+        document.getElementById("status").innerHTML=
+          '<div class="status err">Couldn\'t load forecast.json ('+e.message+'). The pipeline may not have run yet, or Pages hasn\'t published it.</div>';
+      }
+    }finally{
+      if(isResync){ btn.disabled=false; btn.classList.remove("spin"); }
+    }
+  }
+  document.getElementById("resync").addEventListener("click", function(){ loadData(true); });
+  loadData(false);
 </script>
 </body>
 </html>
