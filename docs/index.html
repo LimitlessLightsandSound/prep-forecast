@@ -145,11 +145,15 @@
   .short-block{padding:9px 0;border-bottom:1px solid var(--line)}
   .short-job a{color:var(--ink);text-decoration:none;border-bottom:1px dotted var(--faint)}
   .short-job a:hover{color:var(--cyan)}
-  .short-items{font-size:12.5px;color:var(--muted);margin-top:6px;display:flex;flex-direction:column;gap:3px}
+  .short-dates{display:flex;flex-wrap:wrap;gap:18px;margin-top:5px;font-size:11.5px;color:var(--muted)}
+  .short-dates b{color:var(--faint);font-weight:700;text-transform:uppercase;letter-spacing:.5px;font-size:10px;margin-right:5px}
+  .short-dates .nd{color:var(--faint);font-style:italic}
+  .short-items{font-size:12.5px;color:var(--muted);margin-top:7px;display:flex;flex-direction:column;gap:2px}
+  .short-grp{margin-top:8px}
+  .short-grp:first-child{margin-top:0}
+  .short-grp-h{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--violet);font-weight:700;margin-bottom:3px}
   .short-item{padding-left:15px;position:relative}
   .short-item::before{content:"•";position:absolute;left:3px;color:var(--faint)}
-  .short-item.more{color:var(--faint);font-style:italic}
-  .short-item.more::before{content:""}
   .short-item .sq{color:var(--amber);font-weight:700;font-variant-numeric:tabular-nums;margin-left:4px}
   .gate{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
     background:rgba(8,10,14,.93);backdrop-filter:blur(5px)}
@@ -247,6 +251,16 @@
       return (id && rmsBase)
         ? '<a href="'+rmsBase+'/opportunities/'+encodeURIComponent(id)+'?view=d" target="_blank" rel="noopener">'+esc(nm)+'</a>'
         : esc(nm);
+    }
+    // Shortages page only: link the job straight to its RMS Availability view.
+    function availlink(id, nm){
+      return (id && rmsBase)
+        ? '<a href="'+rmsBase+'/availability/opportunity/'+encodeURIComponent(id)+'" target="_blank" rel="noopener">'+esc(nm)+'</a>'
+        : esc(nm);
+    }
+    function shdate(s){
+      if(!s) return '<span class="nd">not set</span>';
+      const f=fd(s); return f.dow+' '+f.mon+' '+f.dnum;
     }
     document.getElementById("shiftnote").textContent = payload.shift_hours || 8;
     if(payload.generated_at){
@@ -362,16 +376,28 @@
     if(shorts.length){
       dh += '<div class="sec"><span class="tick"></span>Shortages</div>'+
         shorts.map(function(s){
-          const shown=(s.items||[]);
-          const extra=s.count-shown.length;
-          const list=shown.map(function(it){
+          const cnt=s.count+' item'+(s.count===1?'':'s')+' short';
+          // Cluster the (already group-sorted) items under product-group headers.
+          const groups=[], seen={};
+          (s.items||[]).forEach(function(it){
+            const g=(it&&it.group)?it.group:'OTHER';
+            if(!seen[g]){ seen[g]={name:g,items:[]}; groups.push(seen[g]); }
+            seen[g].items.push(it);
+          });
+          const body=groups.map(function(gr){
+            const rows=gr.items.map(function(it){
               const nm=(it&&it.name!=null)?it.name:it;            // back-compat if string
               const q=(it&&it.qty)?' <span class="sq">'+(+it.qty)+' short</span>':'';
               return '<div class="short-item">'+esc(nm)+q+'</div>';
-            }).join('')
-                    +(extra>0?'<div class="short-item more">+ '+extra+' more…</div>':'');
-          const cnt=s.count+' item'+(s.count===1?'':'s')+' short';
-          return '<div class="short-block"><div class="short-job">'+joblink(s.id,s.name)+' <span class="logi-cnt">'+cnt+'</span></div><div class="short-items">'+list+'</div></div>';
+            }).join('');
+            return '<div class="short-grp"><div class="short-grp-h">'+esc(gr.name)+'</div>'+rows+'</div>';
+          }).join('');
+          const dates='<div class="short-dates">'+
+            '<span><b>Pickup</b> '+shdate(s.pickup_date)+'</span>'+
+            '<span><b>Return</b> '+shdate(s.return_date)+'</span></div>';
+          return '<div class="short-block"><div class="short-job">'+availlink(s.id,s.name)+
+            ' <span class="logi-cnt">'+cnt+'</span></div>'+dates+
+            '<div class="short-items">'+body+'</div></div>';
         }).join('');
     }
     document.getElementById("logi-detail").innerHTML = dh || '<div class="status empty">No sub-rentals or shortages in the window.</div>';

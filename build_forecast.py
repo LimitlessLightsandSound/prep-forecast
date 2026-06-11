@@ -145,21 +145,29 @@ def num(v):
     try: return float(v)
     except (TypeError, ValueError): return 0.0
 
-def build_product_labor():
-    """Map product_id -> (prep_mins, deprep_mins) from product custom fields.
+def build_product_meta():
+    """Map product_id -> (prep_mins, deprep_mins) and product_id -> product_group_id.
 
     The labor minutes live on the PRODUCT (imported via CSV), not on the
     opportunity line item — the item's custom_fields come back empty. So we
     pull all products once and join opportunity items to this map by item_id.
+    The product group rides along (one fetch) so shortages can be grouped by it.
     """
     prods = get_all("/products", "products", page_size=100)
-    m = {}
+    labor, group = {}, {}
     for p in prods:
+        pid = p.get("id")
         cfs = p.get("custom_fields")
         if isinstance(cfs, dict):
-            m[p.get("id")] = (num(cfs.get("prep_labor_mins")),
-                              num(cfs.get("deprep_labor_mins")))
-    return m
+            labor[pid] = (num(cfs.get("prep_labor_mins")),
+                          num(cfs.get("deprep_labor_mins")))
+        group[pid] = p.get("product_group_id")
+    return labor, group
+
+def build_group_names():
+    """product_group_id -> group name (e.g. POWER, CABLE, RIGGING). One small fetch."""
+    return {g.get("id"): g.get("name")
+            for g in get_all("/product_groups", "product_groups", page_size=100)}
 
 def encrypt_envelope(plaintext, passphrase):
     """AES-256-GCM with a PBKDF2-HMAC-SHA256 key. The envelope decrypts in the
@@ -193,7 +201,11 @@ def main():
         sys.exit(0)
 
     # Labor minutes live on products; build the lookup once and join by item_id.
-    labor = build_product_labor()
+    # The product-group lookup rides along for grouping shortages by group.
+    labor, prod_group = build_product_meta()
+    group_names = build_group_names()
+    def group_name(pid):
+        return group_names.get(prod_group.get(pid)) or "OTHER"
 
     # Per day we split minutes into confirmed (Order) vs at-risk (unconfirmed),
     # so the dashboard can show a committed floor plus an "if quotes confirm" delta.
@@ -433,12 +445,21 @@ def main():
                     short = g["qty"]
                 # RMS flagged this product short; never hide that — floor at 1 unit.
                 short = max(1, round(short))
-                short_items.append({"name": g["name"], "qty": short})
-            short_items.sort(key=lambda x: (-x["qty"], x["name"]))
+                short_items.append({"name": g["name"], "qty": short,
+                                    "group": group_name(pid)})
+            # Organise by product group (POWER, CABLE, ...), then biggest shortage
+            # first within a group, so the list reads like a pull sheet.
+            short_items.sort(key=lambda x: (x["group"], -x["qty"], x["name"]))
+            # Pickup = first prep day; return = de-prep day (the shop's own timing).
+            prep_span = days_span(first_key(opp, PREP_START_KEYS), first_key(opp, OUT_KEYS))
+            prep_days = (prep_span[:-1] or [prep_span[-1] - dt.timedelta(days=1)]) if prep_span else []
+            deprep_days = days_span(first_key(opp, RETURN_START_KEYS), first_key(opp, RETURN_END_KEYS))
             shortages.append({
                 "id": oid, "name": name, "out_date": od.isoformat(),
+                "pickup_date": prep_days[0].isoformat() if prep_days else None,
+                "return_date": deprep_days[0].isoformat() if deprep_days else None,
                 "count": len(short_items),
-                "items": short_items[:8],
+                "items": short_items,   # full list — no roll-off
             })
         if any(it.get("sub_rent") for it in items):
             nested = get_all(f"/opportunities/{oid}/opportunity_items",
