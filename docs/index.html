@@ -320,6 +320,8 @@
     margin-left:14px;padding-left:12px;border-left:2px solid rgba(75,191,135,.55);
     border-top-left-radius:3px;border-bottom-left-radius:3px}
   .vrun-name{font-size:11.5px;font-weight:700;color:var(--green);white-space:nowrap;line-height:1.2}
+  .vrun-sug{font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:var(--faint);font-weight:800;
+    border:1px solid var(--line);border-radius:5px;padding:1px 5px;background:var(--panel-2);white-space:nowrap}
   .src-copy{font-size:11px;line-height:1;color:var(--green);background:rgba(75,191,135,.13);
     border:1px solid rgba(75,191,135,.4);border-radius:6px;padding:2px 6px;cursor:pointer;font-family:'Inter';flex-shrink:0}
   .src-copy:hover{filter:brightness(1.18);border-color:var(--green)}
@@ -733,6 +735,7 @@
               if(!run.vendor) return rows;   // no past vendor -> plain rows, no bracket
               return '<div class="vrun"><div class="vrun-items">'+rows+'</div>'+
                 '<div class="vrun-tag"><span class="vrun-name">↻ '+esc(run.vendor)+'</span>'+
+                '<span class="vrun-sug" title="A suggestion from past sub-rentals — not a confirmed booking">suggested</span>'+
                 '<button class="src-copy" data-shidx="'+idx+'" data-vendor="'+esc(run.vendor)+'" title="Copy a request for just '+esc(run.vendor)+'’s items">⧉</button></div></div>';
             }).join('');
             return '<div class="short-grp"><div class="short-grp-h">'+esc(gr.name)+'</div>'+runsHtml+'</div>';

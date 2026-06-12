@@ -335,11 +335,36 @@
     if(minH>maxH){ minH=6; maxH=20; }
     minH=Math.floor(minH); maxH=Math.ceil(maxH); if(minH>=maxH){minH=6;maxH=20;}
     const HP=30, bodyH=(maxH-minH)*HP;   // px per hour (condensed ~35% from 46)
-    // greedy lane assignment within each day so overlapping drives split the width
-    Object.values(byDay).forEach(list=>{ list.sort((a,b)=>a.s-b.s||a.e-b.e); const ends=[];
-      list.forEach(b=>{ let ln=ends.findIndex(x=>x<=b.s+1e-6);
-        if(ln<0){ln=ends.length;ends.push(b.e);} else ends[ln]=b.e; b.lane=ln; });
-      const n=ends.length||1; list.forEach(b=>b.lanes=n); });
+    // Column-pack each day by OVERLAP CLUSTER: a run only splits width against the
+    // runs it actually overlaps (not the day's single busiest moment), and then
+    // expands to fill any free columns to its right. Non-overlapping runs stay full
+    // width — so a lone evening run isn't squeezed because the morning was busy.
+    function packDay(list){
+      list.sort((a,b)=>a.s-b.s||a.e-b.e);
+      let i=0;
+      while(i<list.length){
+        let end=list[i].e, j=i+1;                       // grow a cluster of transitively-overlapping runs
+        while(j<list.length && list[j].s < end-1e-6){ end=Math.max(end,list[j].e); j++; }
+        const cluster=list.slice(i,j), colEnds=[];
+        cluster.forEach(b=>{                             // greedy column assignment within the cluster
+          let c=colEnds.findIndex(x=>x<=b.s+1e-6);
+          if(c<0){ c=colEnds.length; colEnds.push(b.e); } else colEnds[c]=b.e;
+          b.lane=c;
+        });
+        const n=colEnds.length;
+        cluster.forEach(b=>{                             // expand right until a later column clashes in time
+          let span=1;
+          for(let c=b.lane+1;c<n;c++){
+            const clash=cluster.some(o=>o!==b&&o.lane===c&&o.s<b.e-1e-6&&b.s<o.e-1e-6);
+            if(clash) break;
+            span++;
+          }
+          b.lanes=n; b.span=span;
+        });
+        i=j;
+      }
+    }
+    Object.values(byDay).forEach(packDay);
     // colour by VEHICLE; a run with no vehicle allocated shows red
     const colorOf=vehColorMap(drives);
     const dcolor=r=>colorFor(r,colorOf);
@@ -354,7 +379,8 @@
     const bodies='<div class="cal-axis" style="height:'+bodyH+'px;background:'+grid+'">'+axis()+'</div>'+
       days.map(dt=>{
         const blocks=(byDay[dt]||[]).map(b=>{
-          const c=dcolor(b), top=(b.s-minH)*HP, hgt=Math.max(26,(b.e-b.s)*HP), wd=100/b.lanes, lf=b.lane*wd;
+          const c=dcolor(b), top=(b.s-minH)*HP, hgt=Math.max(26,(b.e-b.s)*HP),
+                wUnit=100/b.lanes, lf=b.lane*wUnit, wd=wUnit*(b.span||1);
           const names=(b.drivers||[]).map(x=>x.name.split(" ")[0]).join(", ")||"No driver";
           const veh=(b.vehicle_unallocated||!b.vehicle) ? "⚠ No vehicle" : b.vehicle;
           const inner='<div class="bt" style="color:'+c[0]+'">'+esc(fmtAMPM(b.start))+'</div>'+
