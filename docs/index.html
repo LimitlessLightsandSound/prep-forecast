@@ -382,6 +382,7 @@
   <nav class="tabs">
     <button class="tab active" data-view="main">Shop Floor</button>
     <a class="tab" href="deliveries.html">Truck Runs</a>
+    <button class="tab" data-view="subrentals">Sub-Rentals</button>
     <button class="tab" data-view="detail">Shortages</button>
   </nav>
 
@@ -397,14 +398,17 @@
     </div>
   </section>
 
+  <section id="view-subrentals" style="display:none">
+    <div class="sec"><span class="tick"></span>Sub-Rentals</div>
+    <div id="sub-subs" class="subpanel"></div>
+  </section>
+
   <section id="view-detail" style="display:none">
     <nav class="subtabs" id="subtabs">
-      <button class="subtab" data-sub="subs">Sub-rentals <span class="sc" id="sc-subs">0</span></button>
       <button class="subtab active" data-sub="shorts">Shortages <span class="sc" id="sc-shorts">0</span></button>
       <button class="subtab" data-sub="triage">Triage Board</button>
       <button class="subtab" data-sub="contested">Contested Stock <span class="sc" id="sc-contested">0</span></button>
     </nav>
-    <div id="sub-subs" class="subpanel" style="display:none"></div>
     <div id="sub-shorts" class="subpanel"></div>
     <div id="sub-triage" class="subpanel" style="display:none"></div>
     <div id="sub-contested" class="subpanel" style="display:none"></div>
@@ -870,9 +874,9 @@
     document.getElementById("sub-shorts").innerHTML    = shortsHtml;
     document.getElementById("sub-triage").innerHTML    = triageHtml;
     document.getElementById("sub-contested").innerHTML = contestedHtml;
-    // Tab counts.
+    // Sub-tab counts (Sub-rentals now lives in its own top-level tab).
     (function(){ const set=function(id,n){ const el=document.getElementById(id); if(el) el.textContent=n; };
-      set("sc-subs", subs.length); set("sc-shorts", shorts.length); set("sc-contested", contestedArr.length); })();
+      set("sc-shorts", shorts.length); set("sc-contested", contestedArr.length); })();
 
     // Sub-rentals: render the sortable/grouped table into its host + wire headers.
     renderSubsTable();
@@ -921,10 +925,10 @@
     });
     // Sub-tab switching within the Shortages view.
     (function(){
-      const PANELS=["subs","shorts","triage","contested"];
+      const PANELS=["shorts","triage","contested"];
       function showSub(name){
         document.querySelectorAll("#subtabs .subtab").forEach(function(t){ t.classList.toggle("active", t.getAttribute("data-sub")===name); });
-        PANELS.forEach(function(k){ document.getElementById("sub-"+k).style.display = (k===name)?"":"none"; });
+        PANELS.forEach(function(k){ const el=document.getElementById("sub-"+k); if(el) el.style.display = (k===name)?"":"none"; });
       }
       document.querySelectorAll("#subtabs .subtab").forEach(function(b){
         b.addEventListener("click", function(){ showSub(b.getAttribute("data-sub")); });
@@ -1034,18 +1038,20 @@
     tryUnlock(document.getElementById("gatePass").value, false);
   });
 
-  // Tab switching (Shop Floor / Shortages)
+  // Tab switching (Shop Floor / Sub-Rentals / Shortages)
   function showView(v){
     document.querySelectorAll(".tab").forEach(function(x){ x.classList.remove("active"); });
     const btn=document.querySelector('.tab[data-view="'+v+'"]'); if(btn) btn.classList.add("active");
-    document.getElementById("view-main").style.display   = (v==="main")   ? "" : "none";
-    document.getElementById("view-detail").style.display = (v==="detail") ? "" : "none";
+    ["main","subrentals","detail"].forEach(function(k){
+      const el=document.getElementById("view-"+k); if(el) el.style.display = (k===v) ? "" : "none";
+    });
   }
   document.querySelectorAll(".tab[data-view]").forEach(function(b){
     b.addEventListener("click", function(){ showView(b.getAttribute("data-view")); });
   });
   // Deep-link from the Truck Runs page: index.html#shortages opens the Shortages view.
   if(location.hash === "#shortages") showView("detail");
+  else if(location.hash === "#subrentals") showView("subrentals");
 
   // Brief confirmation toast (used by the Re-sync button so a tap always gives
   // feedback, even when the numbers happen to be unchanged since last pull).
