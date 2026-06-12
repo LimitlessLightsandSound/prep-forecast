@@ -12,7 +12,9 @@
     --bg:#0c0e13; --panel:#14171f; --panel-2:#1b1f29; --line:#272c38;
     --ink:#e8ebf2; --muted:#8a93a6; --faint:#5b6577;
     --amber:#e8a838; --cyan:#3fc7d4; --violet:#9b8cff; --green:#4bbf87;
+    --red:#d65a5a; --blue:#6aa8ff; --teal:#34d6be; --pink:#e87fb0;
     --amber-dim:rgba(232,168,56,.13); --cyan-dim:rgba(63,199,212,.12); --violet-dim:rgba(155,140,255,.12);
+    --green-dim:rgba(75,191,135,.12); --red-dim:rgba(214,90,90,.12);
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);
@@ -185,6 +187,121 @@
   .shared-tag.sc-0{color:#3fc7d4} .shared-tag.sc-1{color:#9b8cff} .shared-tag.sc-2{color:#4bbf87}
   .shared-tag.sc-3{color:#e87fb0} .shared-tag.sc-4{color:#6aa8ff} .shared-tag.sc-5{color:#34d6be}
   .shared-tag.sc-6{color:#c79cff} .shared-tag.sc-7{color:#9fd44b}
+  /* urgency pill, shared by the Triage + Contested sub-views (crit<=3d / week<=7d / later) */
+  .upill{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;padding:2px 8px;
+    border-radius:999px;border:1px solid currentColor;white-space:nowrap;display:inline-block}
+  .upill.crit{color:var(--red);background:var(--red-dim)}
+  .upill.week{color:var(--amber);background:var(--amber-dim)}
+  .upill.later{color:var(--cyan);background:var(--cyan-dim)}
+  /* ===== Shortages sub-tabs ===== */
+  .subtabs{display:flex;flex-wrap:wrap;gap:2px;margin-bottom:20px;border-bottom:1px solid var(--line)}
+  .subtab{background:none;border:none;color:var(--muted);font-family:'Inter';font-size:13.5px;font-weight:600;
+    padding:8px 14px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;display:inline-flex;align-items:center;gap:7px}
+  .subtab:hover{color:var(--ink)}
+  .subtab.active{color:var(--cyan);border-bottom-color:var(--cyan)}
+  .subtab .sc{font-size:11px;font-weight:800;color:var(--faint);background:var(--panel-2);border:1px solid var(--line);
+    border-radius:999px;padding:0 7px;min-width:20px;text-align:center}
+  .subtab.active .sc{color:var(--cyan);border-color:rgba(63,199,212,.4)}
+  .subpanel-empty{padding:30px;text-align:center;color:var(--cyan);font-size:13px;
+    background:var(--cyan-dim);border:1px solid rgba(63,199,212,.3);border-radius:12px}
+  /* ===== Triage board (sub-view) ===== */
+  #sub-triage .board{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:stretch}
+  #sub-triage .col{background:linear-gradient(180deg,var(--panel),rgba(20,23,31,.55));border:1px solid var(--line);
+    border-radius:14px;display:flex;flex-direction:column;min-height:300px;overflow:hidden}
+  #sub-triage .col-top{display:flex;align-items:center;gap:9px;padding:13px 15px 12px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,var(--cdim),transparent)}
+  #sub-triage .col-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;box-shadow:0 0 11px currentColor}
+  #sub-triage .col-name{font-family:'Playfair Display',serif;font-weight:700;font-size:15px;color:#fff;letter-spacing:.2px}
+  #sub-triage .col-sub{font-size:10px;color:var(--faint);font-weight:600;letter-spacing:.4px;text-transform:uppercase;margin-top:1px}
+  #sub-triage .col-count{margin-left:auto;font-size:12px;font-weight:800;min-width:24px;height:24px;border-radius:7px;
+    display:flex;align-items:center;justify-content:center;border:1px solid currentColor;background:rgba(255,255,255,.04)}
+  #sub-triage .col-body{padding:13px;display:flex;flex-direction:column;gap:12px;flex:1}
+  #sub-triage .col.crit{--c:var(--red);--cdim:var(--red-dim)}
+  #sub-triage .col.week{--c:var(--amber);--cdim:var(--amber-dim)}
+  #sub-triage .col.later{--c:var(--cyan);--cdim:var(--cyan-dim)}
+  #sub-triage .col-dot,#sub-triage .col-count,#sub-triage .col-units{color:var(--c)}
+  #sub-triage .col-empty{font-size:12px;color:var(--faint);text-align:center;padding:30px 10px;font-style:italic;
+    border:1px dashed var(--line);border-radius:10px}
+  #sub-triage .card{background:var(--panel-2);border:1px solid var(--line);border-radius:11px;border-top:3px solid var(--c);
+    padding:13px 14px 12px;cursor:pointer;transition:transform .14s ease,box-shadow .14s ease,border-color .14s ease;position:relative}
+  #sub-triage .card:hover{transform:translateY(-3px);box-shadow:0 10px 26px rgba(0,0,0,.4);border-color:var(--c)}
+  #sub-triage .card-head{display:flex;align-items:flex-start;gap:8px}
+  #sub-triage .card-name{font-weight:700;font-size:13.5px;color:#fff;line-height:1.25;flex:1}
+  #sub-triage .card-num{font-size:10px;color:var(--faint);font-weight:600;margin-top:2px}
+  #sub-triage .card-due{display:flex;align-items:center;gap:8px;margin:9px 0 10px;padding:7px 9px;border-radius:8px;background:rgba(0,0,0,.22)}
+  #sub-triage .card-due-d{font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:#fff;line-height:1}
+  #sub-triage .card-due-lbl{font-size:9.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin-top:3px}
+  #sub-triage .card-meta{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-bottom:10px;flex-wrap:wrap}
+  #sub-triage .col-units{font-weight:800}
+  #sub-triage .meta-sep{color:var(--faint)}
+  #sub-triage .ilist{display:flex;flex-direction:column;gap:6px}
+  #sub-triage .irow{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--ink);line-height:1.2}
+  #sub-triage .idot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  #sub-triage .iname{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #sub-triage .iqty{font-weight:700;color:#fff;font-variant-numeric:tabular-nums;flex-shrink:0}
+  #sub-triage .iqty b{color:var(--muted);font-weight:600;font-size:10px}
+  #sub-triage .irow .shared-tag{font-size:8.5px;padding:0 5px;flex-shrink:0;margin-left:0}
+  #sub-triage .imore{font-size:10.5px;color:var(--faint);font-weight:600;padding-left:14px;margin-top:1px}
+  #sub-triage .card-foot{margin-top:11px;display:flex;align-items:center;gap:8px}
+  #sub-triage .drill-hint{margin-left:auto;font-size:10px;color:var(--faint);opacity:0;transition:opacity .14s}
+  #sub-triage .card:hover .drill-hint{opacity:1}
+  #sub-triage .vrow{display:none;padding-left:14px;gap:5px;flex-wrap:wrap;margin-top:-2px;margin-bottom:2px}
+  #sub-triage .irow.hidden-item{display:none}
+  #sub-triage .card.open .irow.hidden-item{display:flex}
+  #sub-triage .card.open .vrow{display:flex}
+  #sub-triage .card.open .imore{display:none}
+  #sub-triage .card.open .drill-hint::after{content:" — collapse"}
+  #sub-triage .card.open{border-color:var(--c);box-shadow:0 10px 26px rgba(0,0,0,.4)}
+  #sub-triage .vrow .vchip{font-size:9.5px;padding:1px 6px}
+  #sub-triage .vrow .none{font-size:9.5px;color:var(--red);font-weight:600}
+  @media(max-width:980px){#sub-triage .board{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:620px){#sub-triage .board{grid-template-columns:1fr}#sub-triage .col{min-height:0}}
+  /* ===== Contested stock (sub-view) ===== */
+  #sub-contested .cs-intro{display:flex;gap:14px;flex-wrap:wrap;margin:0 0 8px}
+  #sub-contested .cs-stat{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:12px;padding:13px 18px;min-width:128px}
+  #sub-contested .cs-stat.hot{border-color:rgba(214,90,90,.42);box-shadow:0 0 0 1px rgba(214,90,90,.12) inset}
+  #sub-contested .cs-stat b{display:block;font-family:'Playfair Display',serif;font-weight:800;font-size:25px;color:#fff;line-height:1.05}
+  #sub-contested .cs-stat.hot b{color:var(--red)}
+  #sub-contested .cs-stat span{font-size:10.5px;text-transform:uppercase;letter-spacing:1.3px;color:var(--muted);font-weight:700}
+  #sub-contested .secnote{font-size:11.5px;color:var(--faint);margin:-6px 0 13px;font-style:italic}
+  #sub-contested .tug{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid rgba(214,90,90,.30);border-radius:14px;margin-bottom:16px;
+    overflow:hidden;box-shadow:0 1px 0 rgba(255,255,255,.02) inset,0 14px 30px -22px rgba(0,0,0,.8)}
+  #sub-contested .tug-grid{display:grid;grid-template-columns:1fr 300px}
+  @media(max-width:840px){#sub-contested .tug-grid{grid-template-columns:1fr}}
+  #sub-contested .tug-main{padding:16px 18px 18px}
+  #sub-contested .tug-side{border-left:1px solid var(--line);background:rgba(0,0,0,.16);padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+  @media(max-width:840px){#sub-contested .tug-side{border-left:0;border-top:1px solid var(--line)}}
+  #sub-contested .tug-head{display:flex;align-items:baseline;gap:11px;margin-bottom:14px;flex-wrap:wrap}
+  #sub-contested .gdot{width:10px;height:10px;border-radius:50%;flex-shrink:0;align-self:center;box-shadow:0 0 9px currentColor}
+  #sub-contested .tug-name{font-size:15px;font-weight:700;color:var(--ink);letter-spacing:.2px}
+  #sub-contested .tug-grp{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--faint)}
+  #sub-contested .tug-demand{margin-left:auto;text-align:right;line-height:1}
+  #sub-contested .tug-demand b{font-family:'Playfair Display',serif;font-weight:800;font-size:27px;color:#fff}
+  #sub-contested .tug-demand span{display:block;font-size:9.5px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-weight:700;margin-top:3px}
+  #sub-contested .tbar{display:flex;height:46px;border-radius:9px;overflow:hidden;border:1px solid var(--line);background:var(--bg)}
+  #sub-contested .seg{display:flex;flex-direction:column;justify-content:center;padding:0 12px;min-width:0;position:relative;overflow:hidden}
+  #sub-contested .seg + .seg{border-left:2px solid var(--bg)}
+  #sub-contested .seg .sj{font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#0c0e13}
+  #sub-contested .seg .sq{font-size:9.5px;font-weight:800;letter-spacing:.4px;color:rgba(12,14,19,.7);text-transform:uppercase}
+  #sub-contested .seg.sooner::after{content:"⚔ first";position:absolute;top:3px;right:6px;font-size:8px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:rgba(12,14,19,.55)}
+  #sub-contested .barscale{display:flex;justify-content:space-between;margin-top:6px;font-size:9px;color:var(--faint);font-weight:600;letter-spacing:.4px}
+  #sub-contested .resolve{display:flex;gap:9px;align-items:flex-start;margin-top:14px;padding:10px 12px;border-radius:9px;background:rgba(63,199,212,.06);border:1px solid rgba(63,199,212,.18)}
+  #sub-contested .resolve .ic{color:var(--cyan);font-size:13px;line-height:1.3;flex-shrink:0}
+  #sub-contested .resolve p{font-size:12px;color:var(--muted);line-height:1.5}
+  #sub-contested .resolve b{color:var(--ink);font-weight:600}
+  #sub-contested .resolve .vchip{vertical-align:middle;margin-left:2px}
+  #sub-contested .sl{font-size:9.5px;text-transform:uppercase;letter-spacing:1.3px;color:var(--faint);font-weight:700;margin-bottom:1px}
+  #sub-contested .cjob{display:flex;align-items:center;gap:9px}
+  #sub-contested .cjob .cj-tick{width:7px;height:7px;border-radius:2px;flex-shrink:0}
+  #sub-contested .cjob .cj-body{min-width:0;flex:1}
+  #sub-contested .cjob .cj-name{font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #sub-contested .cjob .cj-meta{font-size:10.5px;color:var(--faint)}
+  #sub-contested .cjob .cj-meta b{color:var(--muted);font-weight:600}
+  #sub-contested .cjob .upill{flex-shrink:0;align-self:center}
+  #sub-contested .copybtn{margin-top:auto;font-family:inherit;font-size:11px;font-weight:700;letter-spacing:.4px;color:var(--cyan);
+    background:transparent;border:1px solid rgba(63,199,212,.4);border-radius:8px;padding:8px 10px;cursor:pointer;transition:.16s;text-align:center}
+  #sub-contested .copybtn:hover{background:var(--cyan-dim);border-color:var(--cyan)}
+  #sub-contested .copybtn.done{color:var(--green);border-color:rgba(75,191,135,.5);background:var(--green-dim)}
   .gate{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
     background:rgba(8,10,14,.93);backdrop-filter:blur(5px)}
   .gate.hidden{display:none}
@@ -257,7 +374,16 @@
   </section>
 
   <section id="view-detail" style="display:none">
-    <div id="logi-detail"></div>
+    <nav class="subtabs" id="subtabs">
+      <button class="subtab" data-sub="subs">Sub-rentals <span class="sc" id="sc-subs">0</span></button>
+      <button class="subtab active" data-sub="shorts">Shortages <span class="sc" id="sc-shorts">0</span></button>
+      <button class="subtab" data-sub="triage">Triage Board</button>
+      <button class="subtab" data-sub="contested">Contested Stock <span class="sc" id="sc-contested">0</span></button>
+    </nav>
+    <div id="sub-subs" class="subpanel" style="display:none"></div>
+    <div id="sub-shorts" class="subpanel"></div>
+    <div id="sub-triage" class="subpanel" style="display:none"></div>
+    <div id="sub-contested" class="subpanel" style="display:none"></div>
   </section>
 </main>
 <script>
@@ -398,13 +524,54 @@
         '</div>';
     } else { nw.innerHTML = ""; }
 
-    // --- Logistics Detail tab: item-level sub-rentals + full shortage lists ---
+    // --- Shortages tab: four sub-views (Sub-rentals / Shortages / Triage / Contested) ---
     const subs = payload.sub_rentals || [];
     const shorts = payload.shortages || [];
-    let dh='';
+
+    // Shared helpers for the Triage + Contested sub-views.
+    const TODAY0 = (function(){ const n=new Date(); return new Date(n.getFullYear(),n.getMonth(),n.getDate()); })();
+    function daysUntil(s){ if(!s) return null; const d=new Date(s+"T00:00:00"); return Math.round((d-TODAY0)/86400000); }
+    function urgencyOf(s){ const n=daysUntil(s);
+      if(n==null) return {key:'later',label:'TBD',days:null};
+      if(n<=3)   return {key:'crit', label:(n<=0?'today':n+'d'), days:n};
+      if(n<=7)   return {key:'week', label:n+'d', days:n};
+      return {key:'later', label:n+'d', days:n}; }
+    function bySoonest(a,b){ const x=daysUntil(a.pickup_date), y=daysUntil(b.pickup_date);
+      return (x==null?9999:x)-(y==null?9999:y); }
+    function fullDate(s){ if(!s) return 'TBD'; const f=fd(s); return f.dow+' '+f.mon+' '+f.dnum; }   // "Sun Jun 14"
+    const GROUP_HUE={POWER:'#e8a838',CABLE:'#3fc7d4',RIGGING:'#9b8cff',LIGHTING:'#e87fb0',AUDIO:'#4bbf87',VIDEO:'#6aa8ff',TEXT:'#8a93a6',OTHER:'#8a93a6'};
+    const SHCOL=['var(--violet)','var(--teal)','var(--pink)','var(--blue)'];
+    function shColor(i){ return SHCOL[(+i||0)%SHCOL.length]; }
+    // Normalised item list for a job (product items + text items folded in as group 'TEXT').
+    function jobItems(job){
+      const out=(job.items||[]).map(function(it){return{name:it.name,qty:+it.qty||0,group:it.group||'OTHER',shared:!!it.shared,shared_color:+it.shared_color||0,vendors:it.vendors||[],isText:false};});
+      (job.text_items||[]).forEach(function(it){out.push({name:it.name,qty:+it.qty||0,group:'TEXT',shared:false,shared_color:0,vendors:it.vendors||[],isText:true});});
+      return out;
+    }
+    function jobUnits(job){ return jobItems(job).reduce(function(a,i){return a+i.qty;},0); }
+    function jobLineCount(job){ return (job.count||0)+(job.text_count||0); }
+    // Merge identical items across jobs (key = name+group) to detect contested stock.
+    function itemRows(){
+      const map={}, order=[];
+      shorts.forEach(function(job){
+        jobItems(job).forEach(function(it){
+          const key=it.name+'|'+it.group;
+          if(!map[key]){ map[key]={name:it.name,group:it.group,isText:it.isText,totalQty:0,shared:false,vendors:it.vendors,jobs:[]}; order.push(key); }
+          const r=map[key];
+          r.totalQty+=it.qty;
+          if(it.shared) r.shared=true;
+          if((!r.vendors||!r.vendors.length)&&it.vendors&&it.vendors.length) r.vendors=it.vendors;
+          r.jobs.push({name:job.name,id:job.id,number:job.number,qty:it.qty,pickup_date:job.pickup_date,return_date:job.return_date});
+        });
+      });
+      return order.map(function(k){ const r=map[k]; r.shared=r.shared||r.jobs.length>1; return r; });
+    }
+    const contestedArr = itemRows().filter(function(r){return r.jobs.length>1;});
+
+    // ---- panel: Sub-rentals (the existing item-level table) ----
+    let subsHtml;
     if(subs.length){
-      dh += '<div class="sec"><span class="tick"></span>Sub-rentals</div>'+
-        '<table class="dtable"><thead><tr><th>Item</th><th>Qty</th><th>Window</th><th>Supplier</th><th>Job</th></tr></thead><tbody>'+
+      subsHtml = '<table class="dtable"><thead><tr><th>Item</th><th>Qty</th><th>Window</th><th>Supplier</th><th>Job</th></tr></thead><tbody>'+
         subs.map(function(s){
           const sup = s.supplier ? esc(s.supplier) : '<span class="logi-unalloc">Unallocated</span>';
           // Combined sub-rent bookings show the parts added up, e.g. 12 (10+2).
@@ -414,10 +581,12 @@
           const win = md(s.pickup_date)+' → '+md(s.return_date);
           return '<tr><td>'+esc(s.item)+'</td><td>'+qtxt+'</td><td class="dt-win">'+win+'</td><td>'+sup+'</td><td class="dt-job">'+joblink(s.id,s.name)+'</td></tr>';
         }).join('')+'</tbody></table>';
-    }
+    } else { subsHtml = '<div class="subpanel-empty">No sub-rentals in the window.</div>'; }
+
+    // ---- panel: Shortages (the existing per-job card list) ----
+    let shortsHtml;
     if(shorts.length){
-      dh += '<div class="sec"><span class="tick"></span>Shortages</div>'+
-        shorts.map(function(s, idx){
+      shortsHtml = shorts.map(function(s, idx){
           // Badges: product shortages (computed) and text items (RMS can't track).
           let badges='';
           if(s.count>0) badges+='<span class="logi-cnt">'+s.count+' item'+(s.count===1?'':'s')+' short</span>';
@@ -464,12 +633,174 @@
             ' '+badges+'</div>'+links+dates+
             '<div class="short-items">'+body+textBody+'</div></div>';
         }).join('');
+    } else { shortsHtml = '<div class="subpanel-empty">No shortages in the window. 🎉</div>'; }
+
+    // ---- panel: Triage board (jobs bucketed by deadline) ----
+    function triageItemRow(it, hidden){
+      const cls='irow'+(hidden?' hidden-item':'');
+      const tag = it.shared ? ' <span class="shared-tag" style="color:'+shColor(it.shared_color)+'">shared</span>' : '';
+      const vinner = (it.vendors&&it.vendors.length)
+        ? it.vendors.map(function(v,k){return '<span class="vchip'+(k===0?' top':'')+'">'+esc(v.name)+' <i>'+(+v.n)+'×</i></span>';}).join('')
+        : '<span class="none">no past vendor — source manually</span>';
+      const vcls='vrow'+(hidden?' hidden-item':'');
+      return '<div class="'+cls+'"><span class="idot" style="background:'+(GROUP_HUE[it.group]||GROUP_HUE.OTHER)+'"></span>'+
+        '<span class="iname">'+esc(it.name)+'</span>'+tag+
+        '<span class="iqty">'+it.qty+'<b> sh</b></span></div>'+
+        '<div class="'+vcls+'">'+vinner+'</div>';
     }
-    document.getElementById("logi-detail").innerHTML = dh || '<div class="status empty">No sub-rentals or shortages in the window.</div>';
-    // Wire up the per-job "Copy request" buttons (vendor-ready text -> clipboard).
-    document.querySelectorAll("#logi-detail .copy-req").forEach(function(b){
+    function triageCard(job, idx){
+      const u=urgencyOf(job.pickup_date);
+      const items=jobItems(job).slice().sort(function(a,b){return b.qty-a.qty;});
+      const units=jobUnits(job), lines=jobLineCount(job);
+      const shown=items.slice(0,3), rest=items.slice(3);
+      let html='<div class="card" data-shcard="'+idx+'">';
+      html+='<div class="card-head"><div style="flex:1">'+
+        '<div class="card-name">'+esc(job.name)+'</div>'+
+        '<div class="card-num">#'+esc(job.number)+'</div></div>'+
+        '<span class="upill '+u.key+'">'+esc(u.label)+'</span></div>';
+      html+='<div class="card-due"><div><div class="card-due-d">'+fullDate(job.pickup_date)+'</div>'+
+        '<div class="card-due-lbl">pickup · returns '+md(job.return_date)+'</div></div></div>';
+      html+='<div class="card-meta"><span class="col-units">'+units+' units</span>'+
+        '<span class="meta-sep">·</span><span>'+lines+' short line'+(lines!==1?'s':'')+'</span></div>';
+      html+='<div class="ilist">';
+      shown.forEach(function(it){ html+=triageItemRow(it,false); });
+      rest.forEach(function(it){ html+=triageItemRow(it,true); });
+      if(rest.length) html+='<div class="imore">+'+rest.length+' more item'+(rest.length!==1?'s':'')+' — tap to expand</div>';
+      html+='</div>';
+      html+='<div class="card-foot">'+
+        '<button class="copy-req" data-shidx="'+idx+'" title="Copy a vendor-ready sub-rental request to paste into an email">⧉ Copy request</button>'+
+        '<span class="drill-hint">click to expand ↕</span></div></div>';
+      return html;
+    }
+    let triageHtml;
+    if(shorts.length){
+      const buckets={crit:[],week:[],later:[]};
+      // Keep each job's original index (for the shared Copy-request wiring).
+      shorts.map(function(j,i){return {job:j,idx:i};}).sort(function(a,b){return bySoonest(a.job,b.job);})
+        .forEach(function(o){ buckets[urgencyOf(o.job.pickup_date).key].push(o); });
+      const COLS=[
+        {key:'crit', emoji:'🔴', name:'Critical',  sub:'≤ 3 days', list:buckets.crit},
+        {key:'week', emoji:'🟡', name:'This week', sub:'≤ 7 days', list:buckets.week},
+        {key:'later',emoji:'🔵', name:'Upcoming',  sub:'8+ days',  list:buckets.later},
+      ];
+      triageHtml='<div class="board">'+COLS.map(function(col){
+        let c='<div class="col '+col.key+'"><div class="col-top"><span class="col-dot"></span>'+
+          '<div><div class="col-name">'+col.emoji+' '+col.name+'</div>'+
+          '<div class="col-sub">'+col.sub+'</div></div>'+
+          '<span class="col-count">'+col.list.length+'</span></div><div class="col-body">';
+        c += col.list.length ? col.list.map(function(o){return triageCard(o.job,o.idx);}).join('')
+                             : '<div class="col-empty">Nothing here — clear.</div>';
+        return c+'</div></div>';
+      }).join('')+'</div>';
+    } else { triageHtml = '<div class="subpanel-empty">No shortages to triage. 🎉</div>'; }
+
+    // ---- panel: Contested stock (items two+ jobs both need) ----
+    let contestedHtml;
+    if(!contestedArr.length){
+      contestedHtml = '<div class="subpanel-empty">No contested stock — no item is needed by more than one job in this window. 🎉</div>';
+    } else {
+      const single=itemRows().filter(function(r){return r.jobs.length===1;});
+      const allUnits=shorts.reduce(function(a,j){return a+jobUnits(j);},0);
+      const soonest=shorts.map(function(j){return j.pickup_date;}).filter(Boolean).sort()[0]||null;
+      const HOT='#d65a5a', COOL='#6aa8ff';
+      function shade(hex,amt){ const n=parseInt(hex.replace('#',''),16); let r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+        const f=function(v){return Math.max(0,Math.min(255,Math.round(v+(amt<0?v*amt:(255-v)*amt))));};
+        return '#'+[f(r),f(g),f(b)].map(function(x){return x.toString(16).padStart(2,'0');}).join(''); }
+      let html='<div class="cs-intro">'+
+        '<div class="cs-stat hot"><b>'+contestedArr.length+'</b><span>Contested items</span></div>'+
+        '<div class="cs-stat"><b>'+single.length+'</b><span>Single-job lines</span></div>'+
+        '<div class="cs-stat"><b>'+allUnits+'</b><span>Total units short</span></div>'+
+        '<div class="cs-stat"><b>'+md(soonest)+'</b><span>Soonest pickup</span></div></div>';
+      html+='<div class="sec"><span class="tick" style="background:var(--red);box-shadow:0 0 12px var(--red)"></span>⚔ Contested stock — two jobs, one pool</div>';
+      html+='<div class="secnote">Same gear demanded by more than one job — you can only hold one of them. Buy the gap for the later job; keep the in-house units for the one that rolls first.</div>';
+      contestedArr.forEach(function(row,ci){
+        const hue=GROUP_HUE[row.group]||'#8a93a6';
+        const jobs=row.jobs.slice().sort(bySoonest);
+        const total=jobs.reduce(function(a,j){return a+j.qty;},0);
+        const segColors=jobs.map(function(j,i){return i===0?HOT:shade(COOL,-0.10*i);});
+        const segHTML=jobs.map(function(j,i){
+          const pct=(total?j.qty/total*100:0);
+          return '<div class="seg'+(i===0?' sooner':'')+'" style="flex:'+j.qty+' '+j.qty+' 0%;background:'+segColors[i]+'" title="'+esc(j.name)+' — '+j.qty+' units, picks up '+esc(fullDate(j.pickup_date))+'">'+
+            '<span class="sj">'+esc(j.name)+'</span>'+
+            '<span class="sq">'+j.qty+' units · '+pct.toFixed(0)+'%</span></div>';
+        }).join('');
+        const sooner=jobs[0], later=jobs[jobs.length-1];
+        const v=(row.vendors&&row.vendors.length)?row.vendors[0]:null;
+        const resolveSrc=v?'try <span class="vchip top">'+esc(v.name)+' <i>'+(+v.n)+'×</i></span> (sourced before)':'<b style="color:var(--red)">needs a vendor</b>';
+        const resolveHTML='<b>'+later.qty+'</b> for the later job — <b>'+esc(later.name)+'</b>, needed '+esc(fullDate(later.pickup_date))+'; '+resolveSrc+'. Keep the in-house pool on <b>'+esc(sooner.name)+'</b> ('+esc(md(sooner.pickup_date))+').';
+        const cjobHTML=jobs.map(function(j,i){
+          const u=urgencyOf(j.pickup_date);
+          return '<div class="cjob"><span class="cj-tick" style="background:'+segColors[i]+'"></span>'+
+            '<span class="cj-body"><span class="cj-name">'+esc(j.name)+'</span>'+
+            '<span class="cj-meta"><b>'+j.qty+'</b> units · #'+esc(j.number)+' · '+esc(md(j.pickup_date))+'</span></span>'+
+            '<span class="upill '+u.key+'">'+esc(u.label)+'</span></div>';
+        }).join('');
+        html+='<div class="tug"><div class="tug-grid"><div class="tug-main">'+
+          '<div class="tug-head"><span class="gdot" style="color:'+hue+';background:'+hue+'"></span>'+
+          '<span class="tug-name">'+esc(row.name)+'</span>'+
+          '<span class="tug-grp">'+esc(row.group)+'</span>'+
+          '<span class="tug-demand"><b>'+total+'</b><span>units demanded</span></span></div>'+
+          '<div class="tbar">'+segHTML+'</div>'+
+          '<div class="barscale"><span>picks up first ◂</span><span>▸ picks up later</span></div>'+
+          '<div class="resolve"><span class="ic">⤷</span><p>Sub-rent '+resolveHTML+'</p></div></div>'+
+          '<div class="tug-side"><div class="sl">Both jobs need this</div>'+cjobHTML+
+          '<button class="copybtn" data-cidx="'+ci+'">Copy request →</button></div></div></div>';
+      });
+      contestedHtml=html;
+    }
+
+    // Mount the four panels.
+    document.getElementById("sub-subs").innerHTML      = subsHtml;
+    document.getElementById("sub-shorts").innerHTML    = shortsHtml;
+    document.getElementById("sub-triage").innerHTML    = triageHtml;
+    document.getElementById("sub-contested").innerHTML = contestedHtml;
+    // Tab counts.
+    (function(){ const set=function(id,n){ const el=document.getElementById(id); if(el) el.textContent=n; };
+      set("sc-subs", subs.length); set("sc-shorts", shorts.length); set("sc-contested", contestedArr.length); })();
+
+    // Wire the per-job "Copy request" buttons across the Shortages + Triage panels.
+    document.querySelectorAll("#view-detail .copy-req[data-shidx]").forEach(function(b){
       b.addEventListener("click", function(){ copyRequest(shorts[+b.getAttribute("data-shidx")]); });
     });
+    // Triage cards expand/collapse on click (ignoring clicks on the copy button).
+    document.querySelectorAll("#sub-triage .card").forEach(function(card){
+      card.addEventListener("click", function(e){
+        if(e.target.closest(".copy-req")) return;
+        card.classList.toggle("open");
+      });
+    });
+    // Contested "Copy request" buttons -> focused, vendor-ready text for the later (sub-rented) job.
+    document.querySelectorAll("#sub-contested .copybtn").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        const row=contestedArr[+btn.getAttribute("data-cidx")]; if(!row) return;
+        const jobs=row.jobs.slice().sort(bySoonest);
+        const sooner=jobs[0], later=jobs[jobs.length-1];
+        const v=(row.vendors&&row.vendors.length)?row.vendors[0]:null;
+        const txt='Sub-rental request — '+row.name+'\n'+
+          'Qty: '+later.qty+'\n'+
+          'For: '+later.name+' (#'+later.number+')\n'+
+          'Pickup '+fullDate(later.pickup_date)+' → return '+fullDate(later.return_date)+'\n'+
+          'Note: contested with '+sooner.name+'; our in-house units are assigned there.'+
+          (v?('\nSuggested vendor (sourced before): '+v.name):'');
+        const done=function(){ btn.classList.add("done"); const old=btn.textContent; btn.textContent="Copied ✓";
+          setTimeout(function(){ btn.classList.remove("done"); btn.textContent=old; },1700);
+          toast("Request copied — paste into your email"); };
+        if(navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(txt).then(done, function(){ fallbackCopy(txt); done(); });
+        } else { fallbackCopy(txt); done(); }
+      });
+    });
+    // Sub-tab switching within the Shortages view.
+    (function(){
+      const PANELS=["subs","shorts","triage","contested"];
+      function showSub(name){
+        document.querySelectorAll("#subtabs .subtab").forEach(function(t){ t.classList.toggle("active", t.getAttribute("data-sub")===name); });
+        PANELS.forEach(function(k){ document.getElementById("sub-"+k).style.display = (k===name)?"":"none"; });
+      }
+      document.querySelectorAll("#subtabs .subtab").forEach(function(b){
+        b.addEventListener("click", function(){ showSub(b.getAttribute("data-sub")); });
+      });
+    })();
   }
 
   // --- Vendor-ready sub-rental request (Copy → paste into email) ---------------
