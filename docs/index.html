@@ -523,8 +523,9 @@
     const nw = document.getElementById("nowindow");
     if(noWin.length){
       const items = noWin.map(function(m){
-        const link = (m.id && rmsBase) ? rmsBase+'/opportunities/'+encodeURIComponent(m.id)+'?view=d' : null;
-        const nm = link ? '<a href="'+link+'" target="_blank" rel="noopener">'+esc(m.name)+'</a>' : esc(m.name);
+        // Link straight to the opportunity EDIT page so the de-prep window can be set.
+        const link = (m.id && rmsBase) ? rmsBase+'/opportunities/'+encodeURIComponent(m.id)+'/edit' : null;
+        const nm = link ? '<a href="'+link+'" target="_blank" rel="noopener" title="Edit the opportunity to set its de-prep window">'+esc(m.name)+' ✎</a>' : esc(m.name);
         const b = fd(m.back_date);
         return '<div class="risk-row">'+
           '<span class="risk-date">Back '+b.dow+' '+b.mon+' '+b.dnum+'</span>'+

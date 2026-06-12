@@ -95,6 +95,26 @@ def encrypt_envelope(plaintext, passphrase):
             "iter": PBKDF2_ITERS, "salt": b64(salt), "iv": b64(iv), "ct": b64(ct)}
 
 
+def venue_addr(ven):
+    """One-line street address from a Lasso venue, best-effort across field-name
+    variants (account configs differ). Returns None if nothing usable so the UI
+    can fall back to just city/region."""
+    if not isinstance(ven, dict):
+        return None
+    g = lambda *ks: next((ven[k] for k in ks if ven.get(k)), "")
+    street   = g("address_1", "address1", "street_address", "street", "address", "line1")
+    street2  = g("address_2", "address2", "line2")
+    city     = g("locality", "city", "town")
+    region   = g("region", "state", "province")
+    postcode = g("postal_code", "postcode", "zip", "zip_code")
+    country  = g("country_name", "country")
+    parts = [str(p).strip() for p in (street, street2, city, region, postcode) if p and str(p).strip()]
+    line = ", ".join(parts)
+    if country and str(country).strip().upper() not in ("US", "USA", "UNITED STATES", "UNITED STATES OF AMERICA"):
+        line = (line + ", " + str(country).strip()) if line else str(country).strip()
+    return line or None
+
+
 def main():
     today = dt.date.today()
     end   = today + dt.timedelta(days=DAYS - 1)
@@ -170,6 +190,7 @@ def main():
             "venue_name": ven.get("name"),
             "venue_city": ven.get("locality"),
             "venue_region": ven.get("region"),
+            "venue_address": venue_addr(ven),
             "drivers": drivers,
         })
 

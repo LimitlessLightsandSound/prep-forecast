@@ -22,14 +22,17 @@
                      radial-gradient(circle at 92% 0%,rgba(63,199,212,.05),transparent 40%);
     background-attachment:fixed}
   header{padding:30px 22px 24px;border-bottom:1px solid var(--line)}
-  .head-row{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;max-width:min(1680px,96vw);margin:0 auto}
+  .head-row{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;max-width:1240px;margin:0 auto}
   .eyebrow{font-size:11.5px;text-transform:uppercase;letter-spacing:2.5px;color:var(--amber);font-weight:700;margin-bottom:7px}
   header h1{font-family:'Playfair Display',serif;font-weight:800;font-size:32px;letter-spacing:.3px;color:#fff}
   header h1 em{font-style:normal;color:var(--cyan)}
   .sub{font-size:13px;color:var(--muted);margin-top:5px}
   .updated{font-size:12px;color:var(--faint);text-align:right}
   .updated b{color:var(--cyan);font-weight:600;display:block;margin-top:2px;font-size:13px}
-  main{max-width:min(1680px,96vw);margin:0 auto;padding:30px 22px 70px}
+  main{max-width:1240px;margin:0 auto;padding:30px 22px 70px}
+  /* The page matches the rest of the dashboard (1240px); only the calendar breaks
+     out wider so the 7 day-columns have room. */
+  #view-cal{width:min(1680px,96vw);margin-left:calc(50% - min(840px,48vw))}
   .tabs{display:flex;margin-bottom:24px;border-bottom:1px solid var(--line)}
   .tab{background:none;border:none;color:var(--muted);font-family:'Inter';font-size:15px;font-weight:600;
     padding:9px 4px;margin-right:22px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;text-decoration:none}
@@ -71,6 +74,8 @@
   .r-event .ec{color:var(--faint);font-size:11px;margin-top:2px;font-variant-numeric:tabular-nums}
   .r-dest{font-size:13px;color:var(--ink)}
   .r-dest .city{color:var(--muted);font-size:11.5px;display:block;margin-top:2px}
+  .r-dest .addr{display:block;margin-top:3px;font-size:11.5px;color:var(--muted);text-decoration:none;border-bottom:1px dotted var(--faint);width:fit-content}
+  .r-dest a.addr:hover{color:var(--cyan);border-bottom-color:var(--cyan)}
   .r-dest .none,.r-event .none{color:var(--faint)}
   .drivers{display:flex;flex-wrap:wrap;gap:6px}
   .driver{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;
@@ -275,8 +280,13 @@
         const ev = r.event_name
           ? enInner+(r.event_code?'<div class="ec">'+esc(r.event_code)+'</div>':'')
           : '<span class="none">—</span>';
-        const dest = r.venue_name
-          ? esc(r.venue_name)+((r.venue_city||r.venue_region)?'<span class="city">'+esc([r.venue_city,r.venue_region].filter(Boolean).join(", "))+'</span>':'')
+        // Full street address (falls back to city/region on older data); tap to
+        // open Google Maps directions for the run.
+        const addr = r.venue_address || [r.venue_city,r.venue_region].filter(Boolean).join(", ");
+        const mapsQ = encodeURIComponent([r.venue_name, addr].filter(Boolean).join(", "));
+        const dest = (r.venue_name || addr)
+          ? (r.venue_name ? esc(r.venue_name) : '')+
+            (addr ? '<a class="addr" href="https://www.google.com/maps/search/?api=1&query='+mapsQ+'" target="_blank" rel="noopener" title="Open in Google Maps">📍 '+esc(addr)+'</a>' : '')
           : '<span class="none">—</span>';
         const tt = r.type && r.type!=="shift" ? '<span class="tt">'+esc(r.type)+'</span>' : '';
         return '<div class="run">'+
