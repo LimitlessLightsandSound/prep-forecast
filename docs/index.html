@@ -735,8 +735,8 @@
               if(!run.vendor) return rows;   // no past vendor -> plain rows, no bracket
               return '<div class="vrun"><div class="vrun-items">'+rows+'</div>'+
                 '<div class="vrun-tag"><span class="vrun-name">↻ '+esc(run.vendor)+'</span>'+
-                '<span class="vrun-sug" title="A suggestion from past sub-rentals — not a confirmed booking">suggested</span>'+
-                '<button class="src-copy" data-shidx="'+idx+'" data-vendor="'+esc(run.vendor)+'" title="Copy a request for just '+esc(run.vendor)+'’s items">⧉</button></div></div>';
+                '<button class="src-copy" data-shidx="'+idx+'" data-vendor="'+esc(run.vendor)+'" title="Copy a request for just '+esc(run.vendor)+'’s items">⧉</button>'+
+                '<span class="vrun-sug" title="A suggestion from past sub-rentals — not a confirmed booking">suggested</span></div></div>';
             }).join('');
             return '<div class="short-grp"><div class="short-grp-h">'+esc(gr.name)+'</div>'+runsHtml+'</div>';
           }).join('');
