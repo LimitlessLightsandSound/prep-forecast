@@ -168,6 +168,13 @@
   .short-grp.text-grp{border-top:1px dashed var(--line);padding-top:7px;margin-top:9px}
   .short-grp-h.text-h{color:var(--amber)}
   .short-item .sq.tq{color:var(--muted)}
+  .vhint{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:3px 0 1px 15px}
+  .vh-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.6px;color:var(--faint);font-weight:700}
+  .vchip{font-size:10.5px;font-weight:600;color:var(--muted);background:var(--panel-2);
+    border:1px solid var(--line);border-radius:6px;padding:1px 7px;white-space:nowrap;cursor:help}
+  .vchip i{font-style:normal;color:var(--faint);font-size:9px;margin-left:1px}
+  .vchip.top{color:var(--green);border-color:rgba(75,191,135,.45);background:rgba(75,191,135,.1)}
+  .vchip.top i{color:var(--green)}
   .short-item{padding-left:15px;position:relative}
   .short-item::before{content:"•";position:absolute;left:3px;color:var(--faint)}
   .short-item .sq{color:var(--amber);font-weight:700;font-variant-numeric:tabular-nums;margin-left:4px}
@@ -280,6 +287,18 @@
       const f=fd(s); return f.dow+' '+f.mon+' '+f.dnum;
     }
     function md(s){ if(!s) return "TBD"; const f=fd(s); return f.mon+' '+f.dnum; }   // compact "Jun 17"
+    // "Sourced before" hint: ranked past vendors for an item (top one starred).
+    // Display-only — deliberately NOT in the Copy request, which stays vendor-neutral.
+    function vchips(vs){
+      if(!vs||!vs.length) return '';
+      return '<div class="vhint"><span class="vh-lbl">↻ sourced before</span>'+
+        vs.map(function(v,i){
+          const last=v.last?(' · last used '+v.last):'';
+          const top=(i===0)?' top':'';
+          return '<span class="vchip'+top+'" title="Used '+(+v.n)+'×'+last+'">'+
+                 (i===0?'★ ':'')+esc(v.name)+' <i>'+(+v.n)+'×</i></span>';
+        }).join('')+'</div>';
+    }
     document.getElementById("shiftnote").textContent = payload.shift_hours || 8;
     if(payload.generated_at){
       document.getElementById("updated").textContent =
@@ -419,7 +438,7 @@
               const sw=(it&&it.shared_with)||[];
               const scls=(it&&it.shared)?(' sc-'+(((+it.shared_color)||0)%8)):'';
               const tag=(it&&it.shared)?' <span class="shared-tag'+scls+'" title="Shared with '+esc(sw.join(', '))+'">⇄ Shared</span>':'';
-              return '<div class="short-item">'+esc(nm)+q+tag+'</div>';
+              return '<div class="short-item">'+esc(nm)+q+tag+vchips(it&&it.vendors)+'</div>';
             }).join('');
             return '<div class="short-grp"><div class="short-grp-h">'+esc(gr.name)+'</div>'+rows+'</div>';
           }).join('');
@@ -428,7 +447,7 @@
             '<div class="short-grp text-grp"><div class="short-grp-h text-h">⚑ Text items</div>'+
             s.text_items.map(function(it){
               const q=(it&&it.qty)?' <span class="sq tq">×'+(+it.qty)+'</span>':'';
-              return '<div class="short-item">'+esc(it.name!=null?it.name:it)+q+'</div>';
+              return '<div class="short-item">'+esc(it.name!=null?it.name:it)+q+vchips(it&&it.vendors)+'</div>';
             }).join('')+
             '</div>'):'';
           const dates='<div class="short-dates">'+

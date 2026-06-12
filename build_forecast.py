@@ -184,6 +184,37 @@ def encrypt_envelope(plaintext, passphrase):
     return {"v": 1, "kdf": "PBKDF2-HMAC-SHA256", "hash": "SHA-256",
             "iter": PBKDF2_ITERS, "salt": b64(salt), "iv": b64(iv), "ct": b64(ct)}
 
+def decrypt_envelope(env, passphrase):
+    """Inverse of encrypt_envelope — used to read the (committed, encrypted)
+    vendor-history cache back in. Same PBKDF2 + AES-256-GCM as the browser."""
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    key = hashlib.pbkdf2_hmac("sha256", passphrase.encode("utf-8"),
+                              base64.b64decode(env["salt"]),
+                              int(env.get("iter", PBKDF2_ITERS)), dklen=32)
+    pt  = AESGCM(key).decrypt(base64.b64decode(env["iv"]),
+                              base64.b64decode(env["ct"]), None)
+    return json.loads(pt.decode("utf-8"))
+
+VENDOR_HISTORY = os.path.join(os.path.dirname(__file__), "docs", "vendor_history.json")
+
+def load_vendor_history():
+    """Read the vendor-history cache (built occasionally by build_vendor_history.py).
+    Handles both the encrypted envelope and plaintext; returns {} if absent/unreadable
+    so the forecast still runs without suggestions."""
+    try:
+        with open(VENDOR_HISTORY) as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    if isinstance(data, dict) and data.get("ct") and data.get("kdf"):
+        if not PASSPHRASE:
+            return {}
+        try:
+            data = decrypt_envelope(data, PASSPHRASE)
+        except Exception:
+            return {}
+    return data if isinstance(data, dict) else {}
+
 def main():
     today = dt.date.today()
     horizon = today + dt.timedelta(days=DAYS)
@@ -516,6 +547,24 @@ def main():
         sh["text_items"] = [t for t in sh.get("text_items", []) if t["name"] not in covered]
         sh["text_count"] = len(sh["text_items"])
     shortages = [sh for sh in shortages if sh["count"] or sh["text_count"]]
+
+    # Suggested vendors: join each shorted/text item to the sub-rental history cache
+    # (who we've sourced it from before). Catalog items match by product id, text
+    # items by name. Done before the shared pass below pops the internal `pid`.
+    vh = load_vendor_history()
+    vh_pid, vh_name = vh.get("by_pid", {}), vh.get("by_name", {})
+    def vendors_for(pid, name):
+        v = vh_pid.get(str(pid)) if pid else None
+        if not v and name:
+            v = vh_name.get(name.strip().lower())
+        return v or None
+    for sh in shortages:
+        for it in sh["items"]:
+            v = vendors_for(it.get("pid"), it.get("name"))
+            if v: it["vendors"] = v
+        for it in sh.get("text_items", []):
+            v = vendors_for(None, it.get("name"))
+            if v: it["vendors"] = v
 
     # Mark SHARED shortages: the same product short on more than one opportunity in
     # the window. Those jobs compete for the SAME scarce stock, so their per-job

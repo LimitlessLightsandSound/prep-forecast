@@ -55,6 +55,19 @@ push. The published data is encrypted; the page prompts for the shared passphras
 and decrypts in-browser. Free plan is fine — no private Pages needed because the
 data is never published in the clear.
 
+## Vendor-history cache (suggested vendors on shortages)
+`docs/vendor_history.json` maps each item to the suppliers we've sub-rented it from
+over the last 18 months (ranked). The Shortages tab shows these as "↻ sourced before"
+chips. It is built by a SEPARATE script — `build_vendor_history.py` — because the
+crawl is slow (a few hundred nested API calls, several minutes). The 3-hour pipeline
+only READS the cached file and joins it to the current shortages, so it stays fast.
+
+- The 3-hour routine does NOT rebuild this cache; it reads whatever is committed.
+- Refresh occasionally (vendor relationships move slowly — weekly/monthly is plenty):
+  `source .env && python3 build_vendor_history.py` then commit `docs/vendor_history.json`.
+- It's encrypted (same passphrase) so it's safe in the public repo.
+- Optional: a separate weekly cloud routine running that one command keeps it current.
+
 ## Why this design (no Zapier, no upsert)
 The script recomputes the WHOLE forecast from live opportunities every run and
 overwrites `forecast.json`. Changed, moved, or cancelled jobs are simply correct
