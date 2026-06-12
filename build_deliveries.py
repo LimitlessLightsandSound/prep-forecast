@@ -102,13 +102,14 @@ def venue_addr(ven):
     if not isinstance(ven, dict):
         return None
     g = lambda *ks: next((ven[k] for k in ks if ven.get(k)), "")
-    street   = g("address_1", "address1", "street_address", "street", "address", "line1")
-    street2  = g("address_2", "address2", "line2")
+    street1  = g("street1", "address_1", "address1", "street_address", "street", "address", "line1")
+    street2  = g("street2", "address_2", "address2", "line2")
+    street3  = g("street3", "line3")
     city     = g("locality", "city", "town")
     region   = g("region", "state", "province")
     postcode = g("postal_code", "postcode", "zip", "zip_code")
     country  = g("country_name", "country")
-    parts = [str(p).strip() for p in (street, street2, city, region, postcode) if p and str(p).strip()]
+    parts = [str(p).strip() for p in (street1, street2, street3, city, region, postcode) if p and str(p).strip()]
     line = ", ".join(parts)
     if country and str(country).strip().upper() not in ("US", "USA", "UNITED STATES", "UNITED STATES OF AMERICA"):
         line = (line + ", " + str(country).strip()) if line else str(country).strip()
