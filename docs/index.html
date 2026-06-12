@@ -311,16 +311,17 @@
   .dtable th.sortable.active{color:var(--cyan)}
   .dtable tr.sub-grp td{background:var(--panel-2);color:var(--green);font-weight:700;font-size:11px;
     text-transform:uppercase;letter-spacing:.7px;padding:8px 10px;border-bottom:1px solid var(--line);border-top:1px solid var(--line)}
-  /* ===== Shortages: per-job "previously sourced from" vendor bracket ===== */
-  .src-summary{margin:9px 0 2px;padding:8px 0 4px 12px;border-left:2px solid rgba(155,140,255,.4)}
-  .src-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--violet);font-weight:700;margin-bottom:5px}
-  .src-row{display:flex;align-items:flex-start;gap:8px;padding:3px 0;font-size:12px;line-height:1.4}
-  .src-row + .src-row{border-top:1px dashed rgba(255,255,255,.05)}
-  .src-row .src-name{color:var(--green);font-weight:700;flex-shrink:0;min-width:96px}
-  .src-row.none .src-name{color:var(--faint);font-weight:600}
-  .src-row .src-items{color:var(--muted)}
+  /* ===== Shortages: inline "previously sourced from" vendor bracket ===== */
+  /* A run of items sourced from one supplier, with a bracket (the border-left on
+     the tag) spanning those rows and the vendor named once alongside. */
+  .vrun{display:flex;align-items:stretch;margin:1px 0}
+  .vrun-items{min-width:0}
+  .vrun-tag{display:flex;align-items:center;gap:7px;flex-shrink:0;align-self:stretch;
+    margin-left:14px;padding-left:12px;border-left:2px solid rgba(75,191,135,.55);
+    border-top-left-radius:3px;border-bottom-left-radius:3px}
+  .vrun-name{font-size:11.5px;font-weight:700;color:var(--green);white-space:nowrap;line-height:1.2}
   .src-copy{font-size:11px;line-height:1;color:var(--green);background:rgba(75,191,135,.13);
-    border:1px solid rgba(75,191,135,.4);border-radius:6px;padding:2px 6px;cursor:pointer;font-family:'Inter';flex-shrink:0;margin-top:1px}
+    border:1px solid rgba(75,191,135,.4);border-radius:6px;padding:2px 6px;cursor:pointer;font-family:'Inter';flex-shrink:0}
   .src-copy:hover{filter:brightness(1.18);border-color:var(--green)}
   .src-copy:active{transform:translateY(1px)}
   .gate{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
@@ -615,21 +616,24 @@
       return {name:r.name, group:r.group, vendors:r.vendors, jobs:r.cjobs,
               totalQty:r.cjobs.reduce(function(a,j){return a+j.qty;},0)};
     });
-    // Group a job's items by the vendor we've sourced them from before, so the
-    // Shortages card can show one "previously sourced from X" line per vendor
-    // (sorted by how often) instead of repeating chips on every item.
+    // Split a product group's items into vendor "runs" so a bracket can be drawn
+    // around the items we've sourced from the same supplier before — sorted so
+    // same-vendor items sit together, no-vendor items last. Stable sort keeps the
+    // incoming (qty-desc) order within each vendor.
     function topVendor(it){ return (it&&it.vendors&&it.vendors.length)?it.vendors[0]:null; }
-    function sourcingGroups(job){
-      const by={}, order=[], none=[];
-      jobItems(job).forEach(function(it){
+    function vendorRuns(items){
+      const by={}, order=[];
+      (items||[]).forEach(function(it){
         const v=topVendor(it);
-        if(!v){ none.push(it); return; }
-        if(!by[v.name]){ by[v.name]={vendor:v.name, n:+v.n||0, items:[]}; order.push(v.name); }
-        by[v.name].items.push(it);
+        const key=v?v.name:'__none__';
+        if(!by[key]){ by[key]={vendor:v?v.name:null, n:v?(+v.n||0):-1, items:[]}; order.push(key); }
+        by[key].items.push(it);
       });
-      const groups=order.map(function(n){return by[n];})
-        .sort(function(a,b){ return b.n-a.n || a.vendor.localeCompare(b.vendor); });
-      return {groups:groups, none:none};
+      return order.map(function(k){return by[k];}).sort(function(a,b){
+        if((a.vendor==null)!==(b.vendor==null)) return a.vendor==null?1:-1;  // no-vendor last
+        if(a.vendor==null) return 0;
+        return b.n-a.n || a.vendor.localeCompare(b.vendor);
+      });
     }
 
     // ---- panel: Sub-rentals (supplier cards + sortable / grouped table) ----
@@ -706,42 +710,33 @@
           });
           if(s.text_items&&s.text_items.length){
             groups.push({name:'Text items', isText:true,
-              items:s.text_items.map(function(t){return {name:(t&&t.name!=null)?t.name:t, qty:t&&t.qty};})});
+              items:s.text_items.map(function(t){return {name:(t&&t.name!=null)?t.name:t, qty:t&&t.qty, vendors:(t&&t.vendors)||[]};})});
+          }
+          function shortItemRow(it, isText, groupName){
+            const nm=(it&&it.name!=null)?it.name:it;            // back-compat if string
+            const q=(it&&it.qty)?' <span class="sq">'+(+it.qty)+' short</span>':'';
+            // Shared = same product contested by another OVERLAPPING job; colour-
+            // code so the same contested item matches across jobs. Text items skip.
+            let tag='';
+            if(!isText){
+              const sm=sharedFor(nm, groupName, s.id);
+              if(sm) tag=' <span class="shared-tag sc-'+(sm.color%8)+'" title="Also needed by '+esc(sm.others.join(', '))+'">⇄ Shared</span>';
+            }
+            return '<div class="short-item">'+esc(nm)+q+tag+'</div>';
           }
           const body=groups.map(function(gr){
-            const rows=gr.items.map(function(it){
-              const nm=(it&&it.name!=null)?it.name:it;            // back-compat if string
-              const q=(it&&it.qty)?' <span class="sq">'+(+it.qty)+' short</span>':'';
-              // Shared = same product contested by another OVERLAPPING job; colour-
-              // code so the same contested item matches across jobs. Text items skip.
-              let tag='';
-              if(!gr.isText){
-                const sm=sharedFor(nm, gr.name, s.id);
-                if(sm) tag=' <span class="shared-tag sc-'+(sm.color%8)+'" title="Also needed by '+esc(sm.others.join(', '))+'">⇄ Shared</span>';
-              }
-              return '<div class="short-item">'+esc(nm)+q+tag+'</div>';
+            // Within a group, draw a bracket around each run of items we've sourced
+            // from the same vendor before — labelled once, with a per-vendor copy
+            // button — instead of repeating the vendor on every line.
+            const runsHtml=vendorRuns(gr.items).map(function(run){
+              const rows=run.items.map(function(it){ return shortItemRow(it, gr.isText, gr.name); }).join('');
+              if(!run.vendor) return rows;   // no past vendor -> plain rows, no bracket
+              return '<div class="vrun"><div class="vrun-items">'+rows+'</div>'+
+                '<div class="vrun-tag"><span class="vrun-name">↻ '+esc(run.vendor)+'</span>'+
+                '<button class="src-copy" data-shidx="'+idx+'" data-vendor="'+esc(run.vendor)+'" title="Copy a request for just '+esc(run.vendor)+'’s items">⧉</button></div></div>';
             }).join('');
-            return '<div class="short-grp"><div class="short-grp-h">'+esc(gr.name)+'</div>'+rows+'</div>';
+            return '<div class="short-grp"><div class="short-grp-h">'+esc(gr.name)+'</div>'+runsHtml+'</div>';
           }).join('');
-          // Sourcing bracket: one line per past vendor (sorted by how often used),
-          // so a single vendor's items can be grabbed at once — instead of a chip
-          // repeated on every item row.
-          const sg=sourcingGroups(s);
-          let srcHtml='';
-          if(sg.groups.length || sg.none.length){
-            srcHtml='<div class="src-summary"><div class="src-lbl">↻ Previously sourced from</div>';
-            sg.groups.forEach(function(g){
-              srcHtml+='<div class="src-row">'+
-                '<button class="src-copy" data-shidx="'+idx+'" data-vendor="'+esc(g.vendor)+'" title="Copy a request for just '+esc(g.vendor)+'’s items">⧉</button>'+
-                '<span class="src-name">'+esc(g.vendor)+'</span>'+
-                '<span class="src-items">'+g.items.map(function(it){return esc(it.name);}).join(' · ')+'</span></div>';
-            });
-            if(sg.none.length){
-              srcHtml+='<div class="src-row none"><span class="src-name">No past vendor</span>'+
-                '<span class="src-items">'+sg.none.map(function(it){return esc(it.name);}).join(' · ')+'</span></div>';
-            }
-            srcHtml+='</div>';
-          }
           const dates='<div class="short-dates">'+
             '<span><b>Pickup</b> '+shdate(s.pickup_date)+'</span>'+
             '<span><b>Return</b> '+shdate(s.return_date)+'</span></div>';
@@ -754,7 +749,7 @@
             rmsLinks+'</div>';
           return '<div class="short-block"><div class="short-job"><span class="short-name">'+esc(s.name)+'</span>'+
             ' '+badges+'</div>'+links+dates+
-            '<div class="short-items">'+body+srcHtml+'</div></div>';
+            '<div class="short-items">'+body+'</div></div>';
         }).join('');
     } else { shortsHtml = '<div class="subpanel-empty">No shortages in the window. 🎉</div>'; }
 
