@@ -372,17 +372,40 @@ def main():
     # The vendor lives on the sub-rent ASSET (item_assets on the opportunity-item
     # nested route), not the line itself — so we fetch nested items only for opps
     # that actually have sub-rentals, and resolve supplier_id -> member name.
-    _member = {}
-    def supplier_name(sid):
-        if not sid:
+    _member = {}   # sid -> {"name": str|None, "address": str|None}
+    def _fmt_address(m):
+        """Best-effort one-line address from a Current RMS member/organisation.
+        Tries the primary address object, then the first listed address; returns
+        None if nothing usable so the UI can simply omit it. Defensive about the
+        exact field names since account configs vary."""
+        cand = m.get("primary_address") or {}
+        if not cand:
+            addrs = m.get("addresses") or []
+            cand = addrs[0] if addrs else {}
+        if not isinstance(cand, dict):
             return None
+        full = (cand.get("full_address") or "").strip()
+        if full:
+            return " ".join(full.split())
+        parts = [cand.get("street"), cand.get("city"),
+                 cand.get("county") or cand.get("state"),
+                 cand.get("postcode") or cand.get("zip"),
+                 cand.get("country_name")]
+        line = ", ".join(str(p).strip() for p in parts if p and str(p).strip())
+        return line or None
+    def _member_info(sid):
         if sid not in _member:
+            info = {"name": None, "address": None}
             try:
-                nm = (req(f"/members/{sid}").get("member", {}) or {}).get("name") or ""
+                m = req(f"/members/{sid}").get("member", {}) or {}
+                info["name"] = (m.get("name") or "").replace("(SUPPLIER)", "").strip() or None
+                info["address"] = _fmt_address(m)
             except SystemExit:
-                nm = ""
-            _member[sid] = nm.replace("(SUPPLIER)", "").strip() or None
+                pass
+            _member[sid] = info
         return _member[sid]
+    def supplier_name(sid):
+        return _member_info(sid)["name"] if sid else None
 
     # --- Real shortage QUANTITIES ------------------------------------------
     # RMS flags a line `has_shortage` but never says HOW MANY are short, and the
@@ -620,6 +643,14 @@ def main():
         row["logi"] = logi
     shortages.sort(key=lambda s: s["out_date"])
 
+    # Supplier roster for the Sub-rentals panel: each upcoming vendor in the window
+    # plus its address (pulled from the RMS member/organisation during supplier_name).
+    # Names match the cleaned supplier string carried on each sub_rental line.
+    name_addr = {info["name"]: info.get("address")
+                 for info in _member.values() if info.get("name")}
+    sup_names = sorted({s["supplier"] for s in sub_rentals if s.get("supplier")})
+    suppliers = [{"name": nm, "address": name_addr.get(nm)} for nm in sup_names]
+
     payload = {
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "horizon_days": DAYS,
@@ -630,6 +661,7 @@ def main():
         "risk": risk,
         "missing_deprep": sorted(missing_deprep, key=lambda m: m["back_date"]),
         "sub_rentals": sub_rentals,
+        "suppliers": suppliers,
         "shortages": shortages,
     }
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
