@@ -220,7 +220,10 @@ def main():
     horizon = today + dt.timedelta(days=DAYS)
 
     # Active opportunities (default scope already excludes cancelled/dead).
-    # Embed items so we don't make an N+1 call per opp.
+    # We still ask RMS to embed opportunity_items + owner, but as of ~2026-06-12
+    # RMS no longer embeds opportunity_items (owner still embeds), so items are
+    # hydrated per-opp below. Keeping the include[] means the fast embedded path
+    # resumes automatically if RMS restores it.
     # NB: once any include[] is set, RMS only returns the associations you ask
     # for — so owner (the account manager) must be requested explicitly too.
     opps = get_all("/opportunities", "opportunities",
@@ -230,6 +233,17 @@ def main():
         print("=== First opportunity raw keys ===")
         print(json.dumps({k: opps[0][k] for k in list(opps[0].keys())}, default=str, indent=2)[:4000])
         sys.exit(0)
+
+    # RMS stopped embedding opportunity_items via include[] (and removed the
+    # top-level /opportunity_items index, which now 404s "No route matches"), so
+    # hydrate each opp's items once from the per-opportunity nested route. Every
+    # downstream loop then reads opp["opportunity_items"] inline as before. If RMS
+    # ever restores include[] embedding, the guard skips the call automatically.
+    for opp in opps:
+        if not opp.get("opportunity_items"):
+            opp["opportunity_items"] = get_all(
+                f"/opportunities/{opp.get('id')}/opportunity_items",
+                "opportunity_items", page_size=100)
 
     # Labor minutes live on products; build the lookup once and join by item_id.
     # The product-group lookup rides along for grouping shortages by group.
@@ -257,10 +271,6 @@ def main():
         owner = opp.get("owner")
         managers[oid] = owner.get("name") if isinstance(owner, dict) else None
         items = opp.get("opportunity_items", [])
-        if not items:
-            # items not embedded for this config — fetch explicitly
-            items = get_all("/opportunity_items", "opportunity_items",
-                            params={"q[opportunity_id_eq]": opp.get("id")})
 
         prep_total = deprep_total = 0.0
         for it in items:
