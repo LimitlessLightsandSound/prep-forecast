@@ -1,0 +1,62 @@
+name: rebuild-forecast
+
+# On-demand rebuild of the dashboard data straight from the source APIs.
+# Runs the same two scripts the dashboard relies on, then commits the freshly
+# encrypted docs/forecast.json + docs/deliveries.json so GitHub Pages redeploys.
+#
+# Triggers:
+#   - workflow_dispatch      → the "Run workflow" button in the Actions tab (manual)
+#   - repository_dispatch     → POST from the dashboard's Re-sync button, via the
+#                               tiny trigger proxy (event type "rebuild")
+#   - schedule (commented)    → enable ONLY after retiring the claude.ai routine,
+#                               otherwise both push to master every 3h and collide.
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [rebuild]
+  # schedule:
+  #   - cron: '0 */3 * * *'   # every 3h, UTC — turn on once the cloud routine is off
+
+# Never let two rebuilds race on a push to master.
+concurrency:
+  group: rebuild-forecast
+  cancel-in-progress: false
+
+permissions:
+  contents: write            # the built-in GITHUB_TOKEN pushes the data commit
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Rebuild forecast + deliveries from the live APIs
+        env:
+          CURRENT_RMS_TOKEN: ${{ secrets.CURRENT_RMS_TOKEN }}
+          CURRENT_RMS_SUBDOMAIN: ${{ secrets.CURRENT_RMS_SUBDOMAIN }}
+          FORECAST_PASSPHRASE: ${{ secrets.FORECAST_PASSPHRASE }}
+          LASSO_API_TOKEN: ${{ secrets.LASSO_API_TOKEN }}
+        run: |
+          python3 build_forecast.py
+          python3 build_deliveries.py
+
+      - name: Commit + push refreshed data
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/forecast.json docs/deliveries.json
+          if git diff --cached --quiet; then
+            echo "No data change — nothing to commit."
+            exit 0
+          fi
+          git commit -m "forecast: rebuild $(date -u +%Y-%m-%dT%H:%MZ) [on-demand]"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
