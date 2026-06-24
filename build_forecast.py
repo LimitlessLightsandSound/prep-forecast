@@ -424,18 +424,30 @@ def main():
     # shortfall the way RMS's Availability view does, over the job's window:
     #     supply = owned stock − quarantine − flagged-unavailable
     #     short  = min(qty this job booked, max(0, concurrent_demand − supply))
-    # concurrent_demand = every active booking of that product whose window
-    # overlaps this job's. QUARANTINE matters and is easy to miss: damaged/lost
-    # gear sits in an open-ended quarantine record that does NOT appear in the
-    # stock level's quantity_unavailable, yet RMS removes it from availability —
-    # so ignoring it under-counts the shortage (e.g. 3 quarantined True1 cables
-    # turn a "5 short" into the correct "8 short"). Capping at the job's own
-    # quantity keeps the per-job number honest.
+    # concurrent_demand = every booking of that product whose window overlaps
+    # this job's AND that actually draws down owned stock. QUARANTINE matters and
+    # is easy to miss: damaged/lost gear sits in an open-ended quarantine record
+    # that does NOT appear in the stock level's quantity_unavailable, yet RMS
+    # removes it from availability — so ignoring it under-counts the shortage
+    # (e.g. 3 quarantined True1 cables turn a "5 short" into the correct "8
+    # short"). Capping at the job's own quantity keeps the per-job number honest.
+    #
+    # Two kinds of booking do NOT consume owned stock and must be excluded from
+    # concurrent_demand, or shortages over-state badly (this over-stated DreamCon
+    # KS28 as 8 when RMS shows 4):
+    #   • sub-rented lines (`sub_rent`) — that qty is sourced from a vendor, not
+    #     pulled from the shelf, so it doesn't reduce availability.
+    #   • Provisional quotes (`status_name == "Provisional"`) — RMS only reserves
+    #     stock for Orders and *Reserved* quotes; provisional/tentative quotes
+    #     hold nothing, so RMS's availability ignores them. (Reserved quotes DO
+    #     hold stock and are kept.)
     prod_demand = defaultdict(list)   # product_id -> [(start, end, qty)]
     for opp in opps:
+        if opp.get("status_name") == "Provisional":
+            continue   # tentative quote: reserves no stock in RMS
         for it in opp.get("opportunity_items", []):
-            if it.get("item_type") != "Product":
-                continue
+            if it.get("item_type") != "Product" or it.get("sub_rent"):
+                continue   # sub-rented qty comes from a vendor, not owned stock
             s, e = parse_dt(it.get("starts_at")), parse_dt(it.get("ends_at"))
             if s and e:
                 prod_demand[it.get("item_id")].append((s, e, num(it.get("quantity"))))
