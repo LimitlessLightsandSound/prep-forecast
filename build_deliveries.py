@@ -39,6 +39,11 @@ VEHICLE_ID = int(os.environ.get("VEHICLE_POSITION_ID", "37623"))
 PASSPHRASE   = os.environ.get("FORECAST_PASSPHRASE", "")
 PBKDF2_ITERS = 200_000
 OUT = os.path.join(os.path.dirname(__file__), "docs", "deliveries.json")
+# LOGISTICS-PORT (Route B): when set, ALSO publish the PLAINTEXT payload to the Limitless Pipeline
+# app's ingest endpoint (feed:'deliveries' → Firestore logistics/deliveries). Independent of the
+# encrypted Pages write; POSTs to the APP (own secret), never to Lasso.
+INGEST_URL    = os.environ.get("LOGISTICS_INGEST_URL", "")
+INGEST_SECRET = os.environ.get("LOGISTICS_INGEST_SECRET", "")
 # Click-through to the event's crew page in the Lasso app. `{code}` is the event
 # code (e.g. LMTLS-E019896), `{id}` the numeric id — both available for the
 # template. Override LASSO_EVENT_URL if your Lasso route differs.
@@ -114,6 +119,27 @@ def venue_addr(ven):
     if country and str(country).strip().upper() not in ("US", "USA", "UNITED STATES", "UNITED STATES OF AMERICA"):
         line = (line + ", " + str(country).strip()) if line else str(country).strip()
     return line or None
+
+
+def publish_to_app(payload):
+    """LOGISTICS-PORT (Route B): POST the plaintext deliveries payload to the app's ingest endpoint
+    so it lands in Firestore logistics/deliveries for the in-app Truck Runs view. No-op unless both
+    LOGISTICS_INGEST_URL and LOGISTICS_INGEST_SECRET are set. Best-effort — a publish failure is
+    logged, never fatal. Targets the APP (ingest secret), never Lasso."""
+    if not INGEST_URL or not INGEST_SECRET:
+        return
+    body = json.dumps({"feed": "deliveries", "payload": payload}).encode("utf-8")
+    req = urllib.request.Request(INGEST_URL, data=body, method="POST", headers={
+        "Content-Type": "application/json",
+        "x-logistics-secret": INGEST_SECRET,
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            print(f"Published deliveries to app ingest: HTTP {resp.status} {resp.read().decode()[:200]}")
+    except urllib.error.HTTPError as e:
+        print(f"App ingest rejected deliveries: HTTP {e.code} {e.read().decode()[:200]}")
+    except Exception as e:  # noqa: BLE001 — publish is best-effort, never fail the build on it
+        print(f"App ingest publish failed (non-fatal): {e}")
 
 
 def main():
@@ -213,6 +239,9 @@ def main():
         with open(OUT, "wb") as f:
             f.write(raw)
         print(f"Wrote PLAINTEXT {OUT}: {len(rows)} drives over {DAYS} days")
+
+    # LOGISTICS-PORT (Route B): also push the plaintext payload to the app (no-op unless configured).
+    publish_to_app(payload)
 
 
 if __name__ == "__main__":

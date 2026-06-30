@@ -222,24 +222,23 @@ def load_vendor_history():
             return {}
     return data if isinstance(data, dict) else {}
 
-def publish_to_app(payload):
-    """LOGISTICS-PORT (Route B): POST the plaintext forecast payload to the app's ingest endpoint
-    so it lands in Firestore `logistics/forecast` for the in-app dashboard. No-op unless both
-    LOGISTICS_INGEST_URL and LOGISTICS_INGEST_SECRET are set. Best-effort: a publish failure is
-    logged but never fails the run (the encrypted Pages write already succeeded). Targets the APP,
-    never RMS — carries the ingest secret, not the RMS token."""
+def publish_to_app(feed, payload):
+    """LOGISTICS-PORT: POST a plaintext payload to the app's ingest endpoint so it lands in Firestore
+    `logistics/<feed>` for the in-app dashboard. `feed` is 'forecast' | 'deliveries' | 'vendorHistory'.
+    No-op unless both LOGISTICS_INGEST_URL and LOGISTICS_INGEST_SECRET are set. Best-effort: a publish
+    failure is logged but never fails the run. Targets the APP, never RMS — carries the ingest secret."""
     if not INGEST_URL or not INGEST_SECRET:
         return
-    body = json.dumps({"feed": "forecast", "payload": payload}).encode("utf-8")
+    body = json.dumps({"feed": feed, "payload": payload}).encode("utf-8")
     req = urllib.request.Request(INGEST_URL, data=body, method="POST", headers={
         "Content-Type": "application/json",
         "x-logistics-secret": INGEST_SECRET,
     })
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
-            print(f"Published forecast to app ingest: HTTP {resp.status} {resp.read().decode()[:200]}")
+            print(f"Published {feed} to app ingest: HTTP {resp.status} {resp.read().decode()[:200]}")
     except urllib.error.HTTPError as e:
-        print(f"App ingest rejected the forecast: HTTP {e.code} {e.read().decode()[:200]}")
+        print(f"App ingest rejected {feed}: HTTP {e.code} {e.read().decode()[:200]}")
     except Exception as e:  # noqa: BLE001 — publish is best-effort, never fail the build on it
         print(f"App ingest publish failed (non-fatal): {e}")
 
@@ -727,8 +726,15 @@ def main():
         print(f"Wrote PLAINTEXT {OUT}: {len(rows)} days "
               f"(no FORECAST_PASSPHRASE set) — do NOT publish this")
 
-    # LOGISTICS-PORT (Route B): also push the plaintext payload to the app (no-op unless configured).
-    publish_to_app(payload)
+    # LOGISTICS-PORT (phase 4 cutover): the in-app NATIVE TS compute (logisticsnativeforecast, gated by
+    # LOGISTICS_NATIVE_COMPUTE) now OWNS logistics/forecast. To avoid a dual-writer race, this producer no
+    # longer publishes the forecast itself — it publishes the vendor-history cache instead, so the native
+    # compute can join supplier suggestions onto its shortages (it has no other source for them).
+    # Rollback lever: set LOGISTICS_FORECAST_PUBLISH=1 to resume publishing the Python forecast (and turn
+    # the native gate off) if the native output needs to be reverted.
+    publish_to_app("vendorHistory", vh)
+    if os.environ.get("LOGISTICS_FORECAST_PUBLISH") == "1":
+        publish_to_app("forecast", payload)
 
 if __name__ == "__main__":
     main()
