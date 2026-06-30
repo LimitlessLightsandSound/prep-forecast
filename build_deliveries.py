@@ -240,8 +240,12 @@ def main():
             f.write(raw)
         print(f"Wrote PLAINTEXT {OUT}: {len(rows)} drives over {DAYS} days")
 
-    # LOGISTICS-PORT (Route B): also push the plaintext payload to the app (no-op unless configured).
-    publish_to_app(payload)
+    # LOGISTICS-PORT (phase 4): the in-app NATIVE deliveries compute (logisticsnativedeliveries, gated by
+    # LOGISTICS_NATIVE_COMPUTE) now OWNS logistics/deliveries. To avoid a dual-writer race, this producer no
+    # longer publishes deliveries to the app. Rollback lever: set LOGISTICS_DELIVERIES_PUBLISH=1 to resume
+    # publishing (and turn the native gate off) if the native deliveries output needs to be reverted.
+    if os.environ.get("LOGISTICS_DELIVERIES_PUBLISH") == "1":
+        publish_to_app(payload)
 
 
 if __name__ == "__main__":
