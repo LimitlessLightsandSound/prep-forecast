@@ -38,6 +38,13 @@ DEBUG     = os.environ.get("DEBUG_FIELDS") == "1"
 PASSPHRASE   = os.environ.get("FORECAST_PASSPHRASE", "")
 PBKDF2_ITERS = 200_000
 OUT       = os.path.join(os.path.dirname(__file__), "docs", "forecast.json")
+# LOGISTICS-PORT (Route B): when these are set, ALSO publish the PLAINTEXT payload to the
+# Limitless Pipeline app's ingest endpoint, which writes it to the private Firestore doc
+# `logistics/forecast`. This is independent of the encrypted GitHub-Pages write above (both run
+# during the migration). It POSTs to the APP — not RMS — with its own shared secret, so it never
+# touches the read-only RMS token / host-pin contract in req().
+INGEST_URL    = os.environ.get("LOGISTICS_INGEST_URL", "")
+INGEST_SECRET = os.environ.get("LOGISTICS_INGEST_SECRET", "")
 
 # Candidate field names for the date anchors. Account configs vary, so we try
 # each in order and use the first present. DEBUG_FIELDS=1 prints what your
@@ -214,6 +221,28 @@ def load_vendor_history():
         except Exception:
             return {}
     return data if isinstance(data, dict) else {}
+
+def publish_to_app(payload):
+    """LOGISTICS-PORT (Route B): POST the plaintext forecast payload to the app's ingest endpoint
+    so it lands in Firestore `logistics/forecast` for the in-app dashboard. No-op unless both
+    LOGISTICS_INGEST_URL and LOGISTICS_INGEST_SECRET are set. Best-effort: a publish failure is
+    logged but never fails the run (the encrypted Pages write already succeeded). Targets the APP,
+    never RMS — carries the ingest secret, not the RMS token."""
+    if not INGEST_URL or not INGEST_SECRET:
+        return
+    body = json.dumps({"feed": "forecast", "payload": payload}).encode("utf-8")
+    req = urllib.request.Request(INGEST_URL, data=body, method="POST", headers={
+        "Content-Type": "application/json",
+        "x-logistics-secret": INGEST_SECRET,
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            print(f"Published forecast to app ingest: HTTP {resp.status} {resp.read().decode()[:200]}")
+    except urllib.error.HTTPError as e:
+        print(f"App ingest rejected the forecast: HTTP {e.code} {e.read().decode()[:200]}")
+    except Exception as e:  # noqa: BLE001 — publish is best-effort, never fail the build on it
+        print(f"App ingest publish failed (non-fatal): {e}")
+
 
 def main():
     today = dt.date.today()
@@ -697,6 +726,9 @@ def main():
             f.write(raw)
         print(f"Wrote PLAINTEXT {OUT}: {len(rows)} days "
               f"(no FORECAST_PASSPHRASE set) — do NOT publish this")
+
+    # LOGISTICS-PORT (Route B): also push the plaintext payload to the app (no-op unless configured).
+    publish_to_app(payload)
 
 if __name__ == "__main__":
     main()
